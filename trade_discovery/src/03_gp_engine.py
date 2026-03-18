@@ -226,7 +226,7 @@ def train_gp_model(
         for slot_rank, (pop_idx, _) in enumerate(worst_slots):
             seed = copy.deepcopy(seed_programs[slot_rank % len(seed_programs)])
             if hasattr(seed, 'program'):
-                seed._n_features = n_features
+                seed.n_features = n_features          # ← CORRECT attribute (no underscore)
                 for i in range(len(seed.program)):
                     if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
@@ -239,12 +239,11 @@ def train_gp_model(
                             seed.program[idx] = rng.randint(0, n_features)
             last_gen[pop_idx] = seed
 
-        # ── DEFINITIVE FIX: patch _n_features on EVERY program, not just terminals ──
+        # Sanitize ALL 3000 programs — correct attribute is n_features (no underscore)
         n_corrupted = 0
         for i, p in enumerate(last_gen):
             if p is not None and hasattr(p, 'program'):
-                # This is the key line — drives all NEW terminal generation in offspring
-                p._n_features = n_features
+                p.n_features = n_features             # ← CORRECT attribute (no underscore)
                 for j in range(len(p.program)):
                     if isinstance(p.program[j], (int, np.integer)):
                         if p.program[j] >= n_features:
@@ -256,28 +255,23 @@ def train_gp_model(
         est_gp._programs[-1] = last_gen
         est_gp.n_features_in_ = n_features
 
-        # ── Also patch the feature_names so gplearn's internal n_features_ is consistent ──
-        est_gp.feature_names = feature_names   # already set above, but re-assert post-Phase1
+        # Verification
+        stale = [p for p in last_gen
+                 if p is not None and getattr(p, 'n_features', n_features) != n_features]
+        if stale:
+            logger.error("[Fold %d] %d programs still have stale n_features after patch!", fold, len(stale))
+        else:
+            logger.info("[Fold %d] Population sanitized — all n_features=%d. Patched %d terminals.",
+                        fold, n_features, n_corrupted)
 
-        if n_corrupted > 0:
-            logger.warning("[Fold %d] Clamped %d out-of-bounds terminals.", fold, n_corrupted)
-
-        # Verify no stale _n_features remain — fail loud in dev, not silently in prod
-        stale_count = sum(
-            1 for p in last_gen
-            if p is not None and getattr(p, '_n_features', n_features) != n_features
-        )
-        if stale_count > 0:
-            logger.error("[Fold %d] BUG: %d programs still have stale _n_features after patch!", fold, stale_count)
-
-        # PHASE 2: single-threaded so gplearn uses patched _n_features in-process
+        # PHASE 2: n_jobs=1 keeps everything in-process
         est_gp.parsimony_coefficient = 0.0005
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS
         est_gp.warm_start            = True
         est_gp.n_jobs                = 1
         est_gp.fit(X_train.values, y_train.values)
 
-        # PHASE 3
+        # PHASE 3: population clean, restore parallelism
         est_gp.parsimony_coefficient = 0.003
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS + PHASE3_GENS
         est_gp.warm_start            = True
