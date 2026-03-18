@@ -339,11 +339,11 @@ def walk_forward_optimization(
         current_train_start += pd.DateOffset(months=step_months)
         fold += 1
 
-        # Memory cleanup
-        _locals = list(locals().keys())
-        for var in ('X_train','y_train','X_test','raw_test','gp_model','portfolio'):
-            if var in _locals:
-                exec(f"del {var}")
+        # Memory cleanup - explicit deletion to ensure local scope is cleared
+        try:
+            del X_train, y_train, X_test, raw_test, gp_model, portfolio
+        except NameError:
+            pass
         gc.collect()
 
     # Final report

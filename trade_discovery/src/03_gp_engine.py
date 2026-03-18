@@ -218,6 +218,14 @@ def train_gp_model(
         last_gen    = est_gp._programs[-1]
         rng         = np.random.RandomState(fold + 1000)
         n_features  = X_train.shape[1]
+        
+        # Assert seed feature space matches current fold before injection
+        for seed in seed_programs:
+            if hasattr(seed, '_n_features') and seed._n_features != n_features:
+                logger.warning(
+                    "[Fold %d] Seed _n_features mismatch: seed=%d, fold=%d — will be patched.",
+                    fold, seed._n_features, n_features
+                )
 
         valid_pop   = [(i, p) for i, p in enumerate(last_gen)
                        if p is not None and hasattr(p, 'fitness_')]
@@ -234,6 +242,9 @@ def train_gp_model(
                     if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
                             seed.program[i] = rng.randint(0, n_features)
+
+                # ── FIX: Reset internal feature count to current fold's feature space ──
+                seed._n_features = n_features
 
                 # ── Variance Restoration ──
                 # Mutate terminals to restore variance and maintain diversity
