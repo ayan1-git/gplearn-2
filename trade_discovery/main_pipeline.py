@@ -169,7 +169,7 @@ def walk_forward_optimization(
     current_train_start = start_date
     fold             = 1
     winning_formulas = []
-    seen_hashes      = set()    # FIX: dedup registry
+    seen_feature_combos = set()    # Layer 2: frozenset(features_used)
     seed_programs    = None     # FIX: cross-fold elite seed carrier
 
     while True:
@@ -209,6 +209,12 @@ def walk_forward_optimization(
             fold += 1
             continue
 
+        # Layer 3: Feature Rotation — force exploration by excluding dominant features
+        if fold % 5 == 0 and "feat_ob_dist_supp" in X_train.columns:
+            logger.info("[Fold %d] 🔄 ROTATION: Temporarily excluding 'feat_ob_dist_supp' to force diversity.", fold)
+            X_train = X_train.drop(columns=["feat_ob_dist_supp"])
+            X_test  = X_test.drop(columns=["feat_ob_dist_supp"])
+
         X_train, X_test = tanh_scale_train_apply_test(
             X_train, X_test,
             scale_cols       = SCALE_FEATURES,
@@ -219,6 +225,16 @@ def walk_forward_optimization(
             # FIX 1-3: pass seed_programs + fold number
             gp_model    = train_gp_model(X_train, y_train, seed_programs=seed_programs, fold=fold)
             formula_str = str(gp_model._program)
+
+            # Layer 1: Minimum Feature Diversity Guard
+            features_used = extract_features_used(formula_str)
+            n_features_used = len(features_used)
+            if n_features_used < 3:
+                logger.warning("[Fold %d] Formula uses only %d feature(s) — too shallow. Skipping.", fold, n_features_used)
+                seed_programs = None
+                current_train_start += pd.DateOffset(months=step_months)
+                fold += 1
+                continue
 
             # ── Degenerate formula guard ──
             program_len = len(gp_model._program.program) if hasattr(gp_model._program, 'program') else 0
@@ -233,10 +249,13 @@ def walk_forward_optimization(
             entry_pct     = np.percentile(train_signals, ENTRY_PCT)
             exit_pct      = np.percentile(train_signals, EXIT_PCT)
 
-            # ── Threshold collapse guard ──
-            # Buy>1.0 / Sell<0.0 means formula output is binary {0,1} — not a signal
-            if entry_pct >= 1.0 and exit_pct <= 0.0:
-                logger.warning("[Fold %d] Threshold collapse (Buy=%.2f, Sell=%.2f) — binary output, not a signal. Skipping.", fold, entry_pct, exit_pct)
+            # ── Degenerate signal distribution guard ──
+            signal_std   = float(np.std(train_signals))
+            unique_ratio = len(np.unique(np.round(train_signals, 3))) / len(train_signals)
+
+            if signal_std < 0.05 or unique_ratio < 0.01 or (entry_pct >= 0.95 and exit_pct <= 0.05):
+                logger.warning("[Fold %d] Degenerate signal distribution — std=%.4f, unique_ratio=%.4f. Skipping.",
+                               fold, signal_std, unique_ratio)
                 seed_programs = None
                 current_train_start += pd.DateOffset(months=step_months)
                 fold += 1
@@ -263,13 +282,14 @@ def walk_forward_optimization(
         max_dd       = float(stats.get('Max Drawdown [%]', 100) or 100)
 
         if total_return > 2.0 and sharpe > 1.5 and max_dd < 15.0:
-            formula_hash = hash_formula(formula_str)
-
-            if formula_hash in seen_hashes:
-                # FIX: duplicate formula — skip log, but still extract seeds
-                logger.warning("[Fold %d] Duplicate formula detected — skipping log entry.", fold)
+            # Layer 2: Semantic Deduplication (Feature Combinations)
+            feat_combo = frozenset(extract_features_used(formula_str))
+            
+            if feat_combo in seen_feature_combos:
+                logger.warning("[Fold %d] Semantically redundant formula (same feature combo) — skipping log entry.", fold)
             else:
-                seen_hashes.add(formula_hash)
+                seen_feature_combos.add(feat_combo)
+                formula_hash = hash_formula(formula_str)
                 logger.info("[Fold %d] ✓ SURVIVOR | Return: %.2f%% | Sharpe: %.2f",
                             fold, total_return, sharpe)
                 winning_formulas.append({
