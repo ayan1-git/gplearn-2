@@ -211,21 +211,13 @@ def train_gp_model(
         est_gp.warm_start            = False
         est_gp.fit(X_train.values, y_train.values)
 
-        # INJECT SEEDS — same as current logic
-        n_seeds = min(len(seed_programs), int(SEED_FRACTION * POPULATION_SIZE))
+        # INJECT SEEDS
+        n_seeds    = min(len(seed_programs), int(SEED_FRACTION * POPULATION_SIZE))
+        n_features = X_train.shape[1]
         logger.info("[Fold %d] Injecting %d seeds into Gen %d population.", fold, n_seeds, PHASE1_GENS-1)
 
-        last_gen    = est_gp._programs[-1]
-        rng         = np.random.RandomState(fold + 1000)
-        n_features  = X_train.shape[1]
-        
-        # Assert seed feature space matches current fold before injection
-        for seed in seed_programs:
-            if hasattr(seed, '_n_features') and seed._n_features != n_features:
-                logger.warning(
-                    "[Fold %d] Seed _n_features mismatch: seed=%d, fold=%d — will be patched.",
-                    fold, seed._n_features, n_features
-                )
+        last_gen = est_gp._programs[-1]
+        rng      = np.random.RandomState(fold + 1000)
 
         valid_pop   = [(i, p) for i, p in enumerate(last_gen)
                        if p is not None and hasattr(p, 'fitness_')]
@@ -233,39 +225,38 @@ def train_gp_model(
 
         for slot_rank, (pop_idx, _) in enumerate(worst_slots):
             seed = copy.deepcopy(seed_programs[slot_rank % len(seed_programs)])
-
             if hasattr(seed, 'program'):
-                # ── Terminal Sanitization ──
-                # Ensure all terminal indices are within current feature bounds.
-                # Prevents IndexError if seeds came from a fold with more features (e.g. Rotation).
+                seed._n_features = n_features  # patch before terminal scan
                 for i in range(len(seed.program)):
                     if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
                             seed.program[i] = rng.randint(0, n_features)
-
-                # ── FIX: Reset internal feature count to current fold's feature space ──
-                seed._n_features = n_features
-
-                # ── Variance Restoration ──
-                # Mutate terminals to restore variance and maintain diversity
                 if len(seed.program) > 2:
                     n_mutate = max(1, int(MUTATION_BOOST * len(seed.program)))
                     for _ in range(n_mutate):
-                        idx  = rng.randint(0, len(seed.program))
+                        idx = rng.randint(0, len(seed.program))
                         if isinstance(seed.program[idx], (int, np.integer)):
                             seed.program[idx] = rng.randint(0, n_features)
-            
             last_gen[pop_idx] = seed
 
-        # Post-injection integrity check — remove corrupted seeds
+        # ── DEFINITIVE FIX: Patch ALL remaining programs in last_gen ──
         n_corrupted = 0
         for i, p in enumerate(last_gen):
             if p is not None and hasattr(p, 'program'):
+                p._n_features = n_features  # <-- patch every program, not just seeds
+                for j in range(len(p.program)):
+                    if isinstance(p.program[j], (int, np.integer)):
+                        if p.program[j] >= n_features:
+                            p.program[j] = rng.randint(0, n_features)
+                            n_corrupted += 1
                 if len(p.program) == 0:
-                    last_gen[i] = None   # let gplearn regenerate this slot
-                    n_corrupted += 1
+                    last_gen[i] = None
+
+        # Force-reset estimator-level feature count
+        est_gp.n_features_in_ = n_features
+
         if n_corrupted > 0:
-            logger.warning("[Fold %d] Removed %d corrupted seed programs after injection.", fold, n_corrupted)
+            logger.warning("[Fold %d] Clamped %d out-of-bounds terminals across full population.", fold, n_corrupted)
 
         # PHASE 2: Exploit — 30 gens, mild parsimony, warm start
         est_gp.parsimony_coefficient = 0.0005
