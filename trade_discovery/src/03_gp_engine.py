@@ -226,7 +226,7 @@ def train_gp_model(
         for slot_rank, (pop_idx, _) in enumerate(worst_slots):
             seed = copy.deepcopy(seed_programs[slot_rank % len(seed_programs)])
             if hasattr(seed, 'program'):
-                seed._n_features = n_features  # patch before terminal scan
+                seed._n_features = n_features
                 for i in range(len(seed.program)):
                     if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
@@ -239,11 +239,11 @@ def train_gp_model(
                             seed.program[idx] = rng.randint(0, n_features)
             last_gen[pop_idx] = seed
 
-        # ── DEFINITIVE FIX: Patch ALL remaining programs in last_gen ──
+        # Patch ALL programs in population
         n_corrupted = 0
         for i, p in enumerate(last_gen):
             if p is not None and hasattr(p, 'program'):
-                p._n_features = n_features  # <-- patch every program, not just seeds
+                p._n_features = n_features
                 for j in range(len(p.program)):
                     if isinstance(p.program[j], (int, np.integer)):
                         if p.program[j] >= n_features:
@@ -252,21 +252,24 @@ def train_gp_model(
                 if len(p.program) == 0:
                     last_gen[i] = None
 
-        # Force-reset estimator-level feature count
         est_gp.n_features_in_ = n_features
+        # ── CRITICAL FIX: reassign the list object so gplearn sees the patched version ──
+        est_gp._programs[-1] = last_gen
 
         if n_corrupted > 0:
-            logger.warning("[Fold %d] Clamped %d out-of-bounds terminals across full population.", fold, n_corrupted)
+            logger.warning("[Fold %d] Clamped %d out-of-bounds terminals.", fold, n_corrupted)
 
-        # PHASE 2: Exploit — 30 gens, mild parsimony, warm start
+        # PHASE 2: run single-threaded to avoid loky serialization bypassing patches
         est_gp.parsimony_coefficient = 0.0005
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS
         est_gp.warm_start            = True
+        est_gp.n_jobs                = 1          # ← KEY: no subprocess boundary
         est_gp.fit(X_train.values, y_train.values)
 
-        # PHASE 3: Regularize — 20 gens, normal parsimony
+        # PHASE 3
         est_gp.parsimony_coefficient = 0.003
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS + PHASE3_GENS
+        est_gp.n_jobs                = 2          # restore parallelism — population is clean
         est_gp.warm_start            = True
         est_gp.fit(X_train.values, y_train.values)
 
