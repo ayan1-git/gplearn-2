@@ -219,14 +219,25 @@ def train_gp_model(
 
         for slot_rank, (pop_idx, _) in enumerate(worst_slots):
             seed = copy.deepcopy(seed_programs[slot_rank % len(seed_programs)])
-            # Mutate terminals to restore variance
-            if hasattr(seed, 'program') and len(seed.program) > 2:
-                n_mutate = max(1, int(0.20 * len(seed.program)))
-                for _ in range(n_mutate):
-                    idx  = rng.randint(0, len(seed.program))
-                    node = seed.program[idx]
-                    if isinstance(node, int):
-                        seed.program[idx] = rng.randint(0, n_features)
+
+            if hasattr(seed, 'program'):
+                # ── Terminal Sanitization ──
+                # Ensure all terminal indices are within current feature bounds.
+                # Prevents IndexError if seeds came from a fold with more features (e.g. Rotation).
+                for i in range(len(seed.program)):
+                    if isinstance(seed.program[i], int):
+                        if seed.program[i] >= n_features:
+                            seed.program[i] = rng.randint(0, n_features)
+
+                # ── Variance Restoration ──
+                # Mutate terminals to restore variance and maintain diversity
+                if len(seed.program) > 2:
+                    n_mutate = max(1, int(MUTATION_BOOST * len(seed.program)))
+                    for _ in range(n_mutate):
+                        idx  = rng.randint(0, len(seed.program))
+                        if isinstance(seed.program[idx], int):
+                            seed.program[idx] = rng.randint(0, n_features)
+            
             last_gen[pop_idx] = seed
 
         # PHASE 2: Exploit — 30 gens, mild parsimony, warm start
