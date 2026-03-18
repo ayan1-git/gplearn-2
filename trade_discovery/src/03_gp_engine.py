@@ -225,7 +225,7 @@ def train_gp_model(
                 # Ensure all terminal indices are within current feature bounds.
                 # Prevents IndexError if seeds came from a fold with more features (e.g. Rotation).
                 for i in range(len(seed.program)):
-                    if isinstance(seed.program[i], int):
+                    if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
                             seed.program[i] = rng.randint(0, n_features)
 
@@ -235,7 +235,7 @@ def train_gp_model(
                     n_mutate = max(1, int(MUTATION_BOOST * len(seed.program)))
                     for _ in range(n_mutate):
                         idx  = rng.randint(0, len(seed.program))
-                        if isinstance(seed.program[idx], int):
+                        if isinstance(seed.program[idx], (int, np.integer)):
                             seed.program[idx] = rng.randint(0, n_features)
             
             last_gen[pop_idx] = seed
