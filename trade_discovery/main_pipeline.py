@@ -170,7 +170,8 @@ def walk_forward_optimization(
     fold             = 1
     winning_formulas = []
     seen_feature_combos = set()    # Layer 2: frozenset(features_used)
-    seed_programs    = None     # FIX: cross-fold elite seed carrier
+    seen_hashes         = set()    # SHA-256 dedup
+    seed_programs       = None     # FIX: cross-fold elite seed carrier
 
     while True:
         train_end = current_train_start + pd.DateOffset(months=train_months)
@@ -211,9 +212,12 @@ def walk_forward_optimization(
 
         # Layer 3: Feature Rotation — force exploration by excluding dominant features
         if fold % 5 == 0 and "feat_ob_dist_supp" in X_train.columns:
-            logger.info("[Fold %d] 🔄 ROTATION: Temporarily excluding 'feat_ob_dist_supp' to force diversity.", fold)
+            logger.info("[Fold %d] 🔄 ROTATION fold — seeds will NOT be carried forward.", fold)
             X_train = X_train.drop(columns=["feat_ob_dist_supp"])
             X_test  = X_test.drop(columns=["feat_ob_dist_supp"])
+            is_rotation_fold = True
+        else:
+            is_rotation_fold = False
 
         X_train, X_test = tanh_scale_train_apply_test(
             X_train, X_test,
@@ -282,14 +286,20 @@ def walk_forward_optimization(
         max_dd       = float(stats.get('Max Drawdown [%]', 100) or 100)
 
         if total_return > 2.0 and sharpe > 1.5 and max_dd < 15.0:
-            # Layer 2: Semantic Deduplication (Feature Combinations)
-            feat_combo = frozenset(extract_features_used(formula_str))
-            
+            # Bug 3: Two-layer dedup — semantic first, then hash
+            feat_combo   = frozenset(extract_features_used(formula_str))
+            formula_hash = hash_formula(formula_str)
+
             if feat_combo in seen_feature_combos:
-                logger.warning("[Fold %d] Semantically redundant formula (same feature combo) — skipping log entry.", fold)
+                logger.warning(
+                    "[Fold %d] Semantically redundant formula (same feature combo %s) — skipping log entry. Formula: %s",
+                    fold, sorted(feat_combo), formula_str
+                )
+            elif formula_hash in seen_hashes:
+                logger.warning("[Fold %d] Identical formula (hash match) — skipping log entry.", fold)
             else:
                 seen_feature_combos.add(feat_combo)
-                formula_hash = hash_formula(formula_str)
+                seen_hashes.add(formula_hash)
                 logger.info("[Fold %d] ✓ SURVIVOR | Return: %.2f%% | Sharpe: %.2f",
                             fold, total_return, sharpe)
                 winning_formulas.append({
@@ -311,9 +321,13 @@ def walk_forward_optimization(
                 out.to_csv(f"outputs/vectorbt_stats/fold_{fold}_winner.csv")
 
             # Extract elite seeds for next fold regardless of dedup status
-            seed_programs = extract_elite_programs(gp_model)
-            logger.info("[Fold %d] Extracted %d elite seeds → fold %d.",
-                        fold, len(seed_programs), fold + 1)
+            if not is_rotation_fold:
+                seed_programs = extract_elite_programs(gp_model)
+                logger.info("[Fold %d] Extracted %d elite seeds → fold %d.",
+                            fold, len(seed_programs), fold + 1)
+            else:
+                seed_programs = None   # rotation fold — don't poison next fold's seeds
+                logger.info("[Fold %d] Rotation fold: seed carry-over suppressed.", fold)
 
         else:
             logger.info("[Fold %d] ✗ FAILED OOS | Return: %.2f%% | Sharpe: %.2f",

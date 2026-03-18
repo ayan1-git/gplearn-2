@@ -34,6 +34,12 @@ except ImportError:
     PEARSON_WEIGHT   = 0.70
     DIRECTION_WEIGHT = 0.30
 
+# ASSERTIONS
+assert PHASE1_GENS + PHASE2_GENS + PHASE3_GENS == GENERATIONS, (
+    f"Phase gens sum ({PHASE1_GENS}+{PHASE2_GENS}+{PHASE3_GENS}) "
+    f"!= GP_GENERATIONS ({GENERATIONS}). Fix config.py."
+)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -185,7 +191,7 @@ def train_gp_model(
         max_samples          = 0.7,
         parsimony_coefficient= 0.005,
         function_set         = TRADING_FUNCTIONS,
-        init_depth           = (3, 6),
+        init_depth           = (INIT_DEPTH_MIN, INIT_DEPTH_MAX),
         metric               = directional_metric,
         feature_names        = feature_names,
         n_jobs               = 2,
@@ -239,6 +245,16 @@ def train_gp_model(
                             seed.program[idx] = rng.randint(0, n_features)
             
             last_gen[pop_idx] = seed
+
+        # Post-injection integrity check — remove corrupted seeds
+        n_corrupted = 0
+        for i, p in enumerate(last_gen):
+            if p is not None and hasattr(p, 'program'):
+                if len(p.program) == 0:
+                    last_gen[i] = None   # let gplearn regenerate this slot
+                    n_corrupted += 1
+        if n_corrupted > 0:
+            logger.warning("[Fold %d] Removed %d corrupted seed programs after injection.", fold, n_corrupted)
 
         # PHASE 2: Exploit — 30 gens, mild parsimony, warm start
         est_gp.parsimony_coefficient = 0.0005
