@@ -61,6 +61,7 @@ OOS_MIN_SHARPE        = 1.5
 OOS_MAX_DRAWDOWN      = 15.0
 OOS_MAX_DRAWDOWN_HIGH_SHARPE = 28.0   # relaxed gate for Sharpe > 3.5
 HIGH_SHARPE_THRESHOLD        = 3.5    # above this, apply relaxed DD gate
+MIN_OOS_TRADES               = 20     # reject strategies with insufficient OOS sample
 
 # ── PROBABILISTIC SEED DECAY ──────────────────────────────────────────────
 SEED_SOFT_THRESHOLD_SHARPE = 0.5   # keep seeds if Sharpe ≥ 0.5 × OOS_MIN_SHARPE
@@ -103,12 +104,12 @@ ROTATION_FEATURE = "feat_ob_dist_supp"
 REGIME_HP: dict = {
     # Strong trend: prefer longer trees; aggressive crossover for recombination
     "trending": {
-        "parsimony_p1":   0.0,
-        "parsimony_p2":   0.0002,
-        "parsimony_p3":   0.002,
+        "parsimony_p1":   0.001,
+        "parsimony_p2":   0.0003,
+        "parsimony_p3":   0.005,
         "p_crossover":    0.70,
-        "depth_max":      8,             # GP_INIT_DEPTH_MAX
-        "tournament_size": 100,          # GP_TOURNAMENT_SIZE
+        "depth_max":      6,             # GP_INIT_DEPTH_MAX
+        "tournament_size": 150,          # GP_TOURNAMENT_SIZE
     },
     # Mean-revert: hard complexity penalty — short precise rules generalise better
     "mean_reverting": {
@@ -139,7 +140,7 @@ REGIME_HP: dict = {
     },
     # Fallback / uncertain
     "random_walk": {
-        "parsimony_p1":   0.0,
+        "parsimony_p1":   0.001,
         "parsimony_p2":   0.0005,
         "parsimony_p3":   0.003,
         "p_crossover":    0.60,

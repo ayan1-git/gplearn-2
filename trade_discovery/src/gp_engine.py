@@ -291,8 +291,24 @@ def train_gp_model(
     depth_max = hp["depth_max"] if not seed_programs else min(hp["depth_max"], 6)
     subtree_mut = MUTATION_BOOST if seed_programs else 0.10
 
+    # Probability Normalization: ensure total evolution probability <= 1.0
+    # Floating point errors can cause total_p=1.0000000000000002 which fails gplearn's internal check.
+    # We scale ONLY the variable components to fit into a conservative 0.999 total target.
+    fixed_p   = HOIST_MUTATION + POINT_MUTATION
+    total_p   = hp["p_crossover"] + subtree_mut + fixed_p
+    if total_p > 0.9999:
+        variable_p        = hp["p_crossover"] + subtree_mut
+        target_variable_p = 0.998 - fixed_p  # Leave a safe 0.002 margin
+        if variable_p > 0:
+            scale = target_variable_p / variable_p
+            hp = dict(hp)  # shallow copy to avoid mutating the global registry
+            hp["p_crossover"] = float(f"{hp['p_crossover'] * scale:.4f}")
+            subtree_mut       = float(f"{subtree_mut * scale:.4f}")
+            logger.info("[Fold %d] Probabilities normalized (scale: %.4f) | Sum: %.4f", 
+                        fold, scale, hp["p_crossover"] + subtree_mut + fixed_p)
+
     logger.info(
-        "[Fold %d] Regime HP | parsimony=(%.4f, %.4f, %.4f) | crossover=%.2f | depth_max=%d",
+        "[Fold %d] Regime HP | parsimony=(%.4f, %.4f, %.4f) | crossover=%.4f | depth_max=%d",
         fold,
         hp["parsimony_p1"], hp["parsimony_p2"], hp["parsimony_p3"],
         hp["p_crossover"], depth_max,
@@ -419,6 +435,13 @@ def train_gp_model(
         est_gp.warm_start            = True
         _apply_feature_proba(est_gp, feature_proba, feature_names, fold)  # FIX-GP-1
         est_gp.fit(X_train.values, y_train.values)
+
+    # Length Check: Reject programs exceeding bloat limit
+    best_len = len(est_gp._program.program)
+    if hasattr(config, "MAX_PROGRAM_LENGTH") and best_len > config.MAX_PROGRAM_LENGTH:
+        logger.warning("[Fold %d] Formula length %d > MAX=%d — rejecting.",
+                       fold, best_len, config.MAX_PROGRAM_LENGTH)
+        return None
 
     best = str(est_gp._program)
     logger.info("[Fold %d] Best formula: %s", fold, best)

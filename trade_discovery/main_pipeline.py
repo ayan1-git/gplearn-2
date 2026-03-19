@@ -47,6 +47,7 @@ SIGNAL_UNIQUE_FLOOR = cfg.SIGNAL_UNIQUE_FLOOR   # FIX 3: raised to 0.15
 OOS_MIN_RETURN   = cfg.OOS_MIN_RETURN
 OOS_MIN_SHARPE   = cfg.OOS_MIN_SHARPE
 OOS_MAX_DRAWDOWN = cfg.OOS_MAX_DRAWDOWN
+MIN_OOS_TRADES   = cfg.MIN_OOS_TRADES
 
 # ── FIX 1: Clean imports via shim modules ───────────────────────────────────
 from src.feature_engineering import (calculate_features,
@@ -163,6 +164,7 @@ def walk_forward_optimization(
     seen_feature_combos = set()
     seen_hashes         = set()
     seed_programs       = None
+    prev_regime         = None
     feature_win_counts  = defaultdict(int)    # tracks wins per feature across folds
 
     while True:
@@ -219,6 +221,22 @@ def walk_forward_optimization(
         # Classify regime on raw TRAIN window (not features — avoid look-ahead)
         train_regime = classify_regime(df_raw.loc[current_train_start : train_end_incl])
         logger.info("[Fold %d] Regime detected: %s", fold, train_regime)
+
+        # ── Guard: Regime Family Flip (Discard seeds if regime family changes) ──
+        if prev_regime != train_regime and prev_regime is not None:
+            regime_family = {
+                "trending":             "trend",
+                "trending_random_walk": "trend",
+                "random_walk":          "noise",
+                "mean_reverting":       "noise",
+                "choppy_random_walk":   "noise",
+            }
+            if regime_family.get(prev_regime) != regime_family.get(train_regime):
+                logger.info("[Fold %d] Regime family flip %s→%s — discarding seeds.",
+                            fold, prev_regime, train_regime)
+                seed_programs = None  # force cold start
+
+        prev_regime = train_regime
 
         # ── GP Training ──
         try:
@@ -330,6 +348,17 @@ def walk_forward_optimization(
             gp_model, X_test, raw_test, ENTRY_PCT, EXIT_PCT,
             tp_mult=TP_ATR_MULT, sl_mult=SL_ATR_MULT,
         )
+
+        # Guard 4: Minimum Trade Count (Executable)
+        long_signals  = metadata['n_long']
+        short_signals = metadata['n_short']
+        n_trades      = long_signals + short_signals
+        if n_trades < MIN_OOS_TRADES:
+            logger.warning(f"[Fold {fold}] Only {n_trades} trades — too few, marking HARD FAIL.")
+            seed_programs = None
+            current_train_start += pd.DateOffset(months=step_months)
+            fold += 1
+            continue
 
         # FIX 2: _safe_stat is Series + dict compatible
         total_return  = _safe_stat(stats, 'Total Return [%]',  0.0)
