@@ -147,7 +147,8 @@ def train_gp_model(
     X_train,
     y_train,
     seed_programs: list = None,
-    fold: int = 0
+    fold: int = 0,
+    feature_proba: np.ndarray = None,
 ) -> SymbolicRegressor:
     """
     Train a SymbolicRegressor with optional cross-fold warm-starting.
@@ -177,7 +178,9 @@ def train_gp_model(
 
     # FIX 1 & novelty pressure:
     # - random_state=fold   → different initial population per fold
-    # - subtree_mut elevated → seeded individuals are mutated, not cloned
+    # Bloat Guard: Seeded runs already start with structural complexity,
+    # so we cap initial depth at 6 instead of 8 to prevent explosive bloat.
+    depth_max = 6 if seed_programs else INIT_DEPTH_MAX
     subtree_mut = MUTATION_BOOST if seed_programs else 0.10
 
     est_gp = SymbolicRegressor(
@@ -191,7 +194,7 @@ def train_gp_model(
         max_samples          = 0.7,
         parsimony_coefficient= 0.005,
         function_set         = TRADING_FUNCTIONS,
-        init_depth           = (INIT_DEPTH_MIN, INIT_DEPTH_MAX),
+        init_depth           = (INIT_DEPTH_MIN, depth_max),
         metric               = directional_metric,
         feature_names        = feature_names,
         n_jobs               = 1,
@@ -200,13 +203,22 @@ def train_gp_model(
         random_state         = fold,          # FIX 1: per-fold diversity
     )
 
+    # Patch the terminal sampling probability on the estimator object
+    if feature_proba is not None and len(feature_proba) == len(feature_names):
+        est_gp._feature_proba = np.array(feature_proba, dtype=float)
+        est_gp._feature_proba /= est_gp._feature_proba.sum()   # normalize
+        logger.info("[Fold %d] Feature prior applied — top feature: %s (p=%.3f)",
+                    fold,
+                    feature_names[np.argmax(feature_proba)],
+                    feature_proba.max())
+
     if seed_programs:
         logger.info("[Fold %d] Starting 3-Phase Seeded Run...", fold)
 
         # PHASE 1: Bootstrap — 10 gens, zero parsimony, high depth pressure
         # Purpose: let seeded complex programs compete fairly before simplification
         est_gp.parsimony_coefficient = 0.0      # no length penalty
-        est_gp.init_depth            = (INIT_DEPTH_MIN, INIT_DEPTH_MAX)
+        est_gp.init_depth            = (INIT_DEPTH_MIN, depth_max)
         est_gp.generations           = PHASE1_GENS
         est_gp.warm_start            = False
         est_gp.fit(X_train.values, y_train.values)
@@ -279,7 +291,24 @@ def train_gp_model(
         est_gp.fit(X_train.values, y_train.values)
 
     else:
-        logger.info("[Fold %d] No seeds — cold-start evolution.", fold)
+        logger.info("[Fold %d] No seeds — starting phased cold-start evolution.", fold)
+        
+        # Phase 1: High growth phase
+        est_gp.parsimony_coefficient = 0.0001
+        est_gp.generations           = PHASE1_GENS
+        est_gp.warm_start            = False
+        est_gp.fit(X_train.values, y_train.values)
+        
+        # Phase 2: Moderate regularization
+        est_gp.parsimony_coefficient = 0.001
+        est_gp.generations           = PHASE1_GENS + PHASE2_GENS
+        est_gp.warm_start            = True
+        est_gp.fit(X_train.values, y_train.values)
+        
+        # Phase 3: Final refinement
+        est_gp.parsimony_coefficient = 0.005
+        est_gp.generations           = GENERATIONS
+        est_gp.warm_start            = True
         est_gp.fit(X_train.values, y_train.values)
 
     best = str(est_gp._program)

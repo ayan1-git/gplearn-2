@@ -13,7 +13,7 @@ Production fixes (2026-03-19):
 import gc
 import logging
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Tuple
 
 import numpy as np
@@ -59,6 +59,7 @@ from src.gp_engine            import (train_gp_model,
                                       extract_elite_programs,
                                       hash_formula)
 from src.vectorbt_evaluator   import evaluate_formula_with_vectorbt
+from src.regime_classifier    import classify_regime
 
 
 # ── FIX 2: stats helper ─────────────────────────────────────────────────────
@@ -162,6 +163,7 @@ def walk_forward_optimization(
     seen_feature_combos = set()
     seen_hashes         = set()
     seed_programs       = None
+    feature_win_counts  = defaultdict(int)    # tracks wins per feature across folds
 
     while True:
         train_end = current_train_start + pd.DateOffset(months=train_months)
@@ -194,12 +196,19 @@ def walk_forward_optimization(
             logger.warning("Fold %d: insufficient data — skipping.", fold)
             current_train_start += pd.DateOffset(months=step_months); fold += 1; continue
 
-        # Rotation fold
-        is_rotation_fold = (fold % 5 == 0) and ("feat_ob_dist_supp" in X_train.columns)
+        # ── Rotation fold (every 5th fold: drop high-autocorrelation feature) ────
+        ROTATION_FEATURE = "feat_ob_dist_supp"
+        is_rotation_fold = (fold % 5 == 0)
+
         if is_rotation_fold:
-            logger.info("[Fold %d] ROTATION — feat_ob_dist_supp excluded.", fold)
-            X_train = X_train.drop(columns=["feat_ob_dist_supp"])
-            X_test  = X_test.drop(columns=["feat_ob_dist_supp"])
+            if ROTATION_FEATURE in X_train.columns:
+                X_train = X_train.drop(columns=[ROTATION_FEATURE])
+                X_test  = X_test.drop(columns=[ROTATION_FEATURE], errors='ignore')
+                logger.info("[Fold %d] ROTATION — '%s' excluded.", fold, ROTATION_FEATURE)
+            else:
+                logger.warning("[Fold %d] ROTATION skipped — '%s' not in columns. Present columns: %s",
+                               fold, ROTATION_FEATURE, [c for c in X_train.columns if 'ob' in c])
+                is_rotation_fold = False   # prevents seed suppression for a non-rotation
 
         X_train, X_test = tanh_scale_train_apply_test(
             X_train, X_test,
@@ -207,10 +216,23 @@ def walk_forward_optimization(
             passthrough_cols=PASSTHROUGH_FEATURES,
         )
 
+        # Classify regime on raw TRAIN window (not features — avoid look-ahead)
+        train_regime = classify_regime(df_raw.loc[current_train_start : train_end_incl])
+        logger.info("[Fold %d] Regime detected: %s", fold, train_regime)
+
         # ── GP Training ──
         try:
+            # Build feature sampling probability vector based on current fold columns
+            current_features = list(X_train.columns)
+            alpha            = cfg.GP_FEATURE_PRIOR_ALPHA
+            raw_counts       = np.array([feature_win_counts.get(f, 0) for f in current_features],
+                                        dtype=float)
+            feat_proba       = (raw_counts + alpha) / (raw_counts + alpha).sum()
+
             gp_model    = train_gp_model(X_train, y_train,
-                                          seed_programs=seed_programs, fold=fold)
+                                          seed_programs=seed_programs,
+                                          fold=fold,
+                                          feature_proba=feat_proba)
             formula_str = str(gp_model._program)
             features_used   = extract_features_used(formula_str)
             n_features_used = len(features_used)
@@ -270,12 +292,16 @@ def walk_forward_optimization(
             'max_dd': max_dd, 'win_rate': win_rate,
             'n_features': n_features_used, 'prog_length': program_len,
             'coverage_pct': metadata['coverage_pct'], 'winner': False,
+            'regime': train_regime,
         })
+
+        # ── Seed Decay Logic (replaces the blunt None reset) ─────────────────────
+        SOFT_SHARPE = cfg.OOS_MIN_SHARPE * cfg.SEED_SOFT_THRESHOLD_SHARPE
 
         if (total_return > OOS_MIN_RETURN
                 and sharpe   > OOS_MIN_SHARPE
                 and max_dd   < OOS_MAX_DRAWDOWN):
-
+            # Hard winner — record & carry full elite pool
             feat_combo   = frozenset(extract_features_used(formula_str))
             formula_hash = hash_formula(formula_str)
 
@@ -286,6 +312,10 @@ def walk_forward_optimization(
             else:
                 seen_feature_combos.add(feat_combo)
                 seen_hashes.add(formula_hash)
+
+                for feat in extract_features_used(formula_str):
+                    feature_win_counts[feat] += 1
+
                 logger.info("[Fold %d] ✓ SURVIVOR | Return: %.2f%% | Sharpe: %.2f",
                             fold, total_return, sharpe)
                 winning_formulas.append({
@@ -310,14 +340,23 @@ def walk_forward_optimization(
 
             if not is_rotation_fold:
                 seed_programs = extract_elite_programs(gp_model)
-                logger.info("[Fold %d] Extracted %d seeds → fold %d.",
+                logger.info("[Fold %d] HARD WIN — %d seeds → fold %d.",
                             fold, len(seed_programs), fold + 1)
             else:
                 seed_programs = None
+
+        elif sharpe > SOFT_SHARPE and max_dd < OOS_MAX_DRAWDOWN * 1.25:
+            # Soft pass — carry only top 50% of elites (decay)
+            full_seeds    = extract_elite_programs(gp_model)
+            n_keep        = max(1, int(len(full_seeds) * cfg.SEED_DECAY_FRACTION))
+            seed_programs = full_seeds[:n_keep]
+            logger.info("[Fold %d] SOFT PASS (Sharpe=%.2f) — decayed to %d seeds → fold %d.",
+                        fold, sharpe, n_keep, fold + 1)
+
         else:
-            logger.info("[Fold %d] ✗ FAILED OOS | Return: %.2f%% | Sharpe: %.2f",
-                        fold, total_return, sharpe)
+            # Hard fail — full cold start
             seed_programs = None
+            logger.info("[Fold %d] HARD FAIL — cold start next fold.", fold)
 
         current_train_start += pd.DateOffset(months=step_months)
         fold += 1
@@ -338,6 +377,12 @@ def walk_forward_optimization(
         pd.DataFrame(fold_meta_rows).to_parquet(
             "outputs/fold_metadata.parquet", index=False)
         logger.info("Fold metadata → outputs/fold_metadata.parquet")
+
+    # Composite Performance Analysis
+    from src.equity_stitcher import stitch_equity_curves
+    equity_df = stitch_equity_curves(winning_formulas, output_dir="outputs")
+    if equity_df is not None:
+        logger.info("Combined equity curve achieved → outputs/combined_equity.parquet")
 
     if winning_formulas:
         log_file = "outputs/winning_formulas.log"

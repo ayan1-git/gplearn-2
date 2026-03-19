@@ -33,6 +33,7 @@ GP_INIT_DEPTH_MIN  = 4
 GP_INIT_DEPTH_MAX  = 8
 GP_SEED_FRACTION   = 0.20
 GP_MUTATION_BOOST  = 0.15
+GP_FEATURE_PRIOR_ALPHA = 2.0   # Dirichlet smoothing strength
 
 # 3-Phase schedule — MUST sum to GP_GENERATIONS
 GP_PHASE1_GENS = 10
@@ -55,6 +56,10 @@ SIGNAL_UNIQUE_FLOOR = 0.005     # ← KEY FIX
 OOS_MIN_RETURN   = 2.0
 OOS_MIN_SHARPE   = 1.5
 OOS_MAX_DRAWDOWN = 15.0
+
+# Probabilistic Seed Decay
+SEED_SOFT_THRESHOLD_SHARPE = 0.5   # keep seeds if Sharpe ≥ 0.5 × OOS_MIN_SHARPE
+SEED_DECAY_FRACTION        = 0.50  # retain only top 50% of elites when soft-passing
 
 # NUMERIC REGULARISATION
 EPS           = 1e-8
