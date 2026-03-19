@@ -1,9 +1,24 @@
-"""
-regime_classifier.py — Hurst + ADX regime labeler for WFO folds.
-Returns: 'trending' | 'mean_reverting' | 'random_walk'
-"""
+import importlib
 import numpy as np
 import pandas as pd
+
+try:
+    config = importlib.import_module("src.config")
+    HURST_TREND_THRESH  = float(config.HURST_TREND_THRESH)
+    HURST_MR_THRESH     = float(config.HURST_MR_THRESH)
+    ADX_TREND_THRESH    = float(config.ADX_TREND_THRESH)
+    CHOP_TREND_THRESH   = float(config.CHOP_TREND_THRESH)
+    CHOP_CHOPPY_THRESH  = float(config.CHOP_CHOPPY_THRESH)
+    CHOP_PERIOD         = int(config.CHOP_PERIOD)
+    ATR_PERIOD          = int(config.ATR_PERIOD)
+except (ImportError, AttributeError):
+    HURST_TREND_THRESH  = 0.55
+    HURST_MR_THRESH     = 0.45
+    ADX_TREND_THRESH    = 25.0
+    CHOP_TREND_THRESH   = 38.2
+    CHOP_CHOPPY_THRESH  = 61.8
+    CHOP_PERIOD         = 28
+    ATR_PERIOD          = 14
 
 def hurst_exponent(series: pd.Series, max_lag: int = 50) -> float:
     """R/S analysis Hurst exponent. H>0.55=trend, H<0.45=MR, else noise."""
@@ -15,7 +30,7 @@ def hurst_exponent(series: pd.Series, max_lag: int = 50) -> float:
 
 
 def adx_value(high: pd.Series, low: pd.Series, close: pd.Series,
-              period: int = 14) -> float:
+              period: int = ATR_PERIOD) -> float:
     """Wilder's ADX. >25 = directional, <20 = non-directional."""
     tr   = pd.concat([high - low,
                       (high - close.shift()).abs(),
@@ -33,7 +48,7 @@ def adx_value(high: pd.Series, low: pd.Series, close: pd.Series,
 
 
 def choppiness_index(high: pd.Series, low: pd.Series, close: pd.Series,
-                     period: int = 28) -> float:
+                     period: int = CHOP_PERIOD) -> float:
     """
     Standard Choppiness Index using the last `period` bars only.
     >61.8 = choppy/range-bound, <38.2 = trending.
@@ -58,11 +73,11 @@ def choppiness_index(high: pd.Series, low: pd.Series, close: pd.Series,
 
 
 def classify_regime(df_raw: pd.DataFrame,
-                    hurst_trend_thresh: float  = 0.55,
-                    hurst_mr_thresh:    float  = 0.45,
-                    adx_trend_thresh:   float  = 25.0,
-                    chop_trend_thresh:  float  = 38.2,
-                    chop_choppy_thresh: float  = 61.8) -> str:
+                    hurst_trend_thresh: float  = HURST_TREND_THRESH,
+                    hurst_mr_thresh:    float  = HURST_MR_THRESH,
+                    adx_trend_thresh:   float  = ADX_TREND_THRESH,
+                    chop_trend_thresh:  float  = CHOP_TREND_THRESH,
+                    chop_choppy_thresh: float  = CHOP_CHOPPY_THRESH) -> str:
     """
     Extended regime classifier: Hurst + ADX + Choppiness Index.
     

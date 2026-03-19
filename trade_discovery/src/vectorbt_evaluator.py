@@ -8,19 +8,21 @@ pd.set_option("future.no_silent_downcasting", True)
 
 try:
     config = importlib.import_module("src.config")
-    DEFAULT_FEES = float(config.FEE_PER_SIDE)
-    DEFAULT_SLIPPAGE = float(config.SLIPPAGE)
-    DEFAULT_TP_MULT = float(config.TP_ATR_MULT)
-    DEFAULT_SL_MULT = float(config.SL_ATR_MULT)
+    DEFAULT_FEES             = float(config.FEE_PER_SIDE)
+    DEFAULT_SLIPPAGE         = float(config.SLIPPAGE)
+    # FIX-VBT-1: Pull TP/SL from config — MUST match target_generator contract
+    DEFAULT_TP_MULT          = float(config.TP_ATR_MULT)      # was hardcoded 3.0
+    DEFAULT_SL_MULT          = float(config.SL_ATR_MULT)      # was hardcoded 1.5
     DEFAULT_ABSOLUTE_EDGE_FLOOR = float(config.ABSOLUTE_EDGE_FLOOR)
-    DEFAULT_RANK_WINDOW = int(getattr(config, "CAUSAL_RANK_WINDOW", 500))
+    DEFAULT_RANK_WINDOW      = int(getattr(config, "CAUSAL_RANK_WINDOW", 500))
 except (ImportError, AttributeError):
-    DEFAULT_FEES = 0.0003
-    DEFAULT_SLIPPAGE = 0.0001
-    DEFAULT_TP_MULT = 3.0
-    DEFAULT_SL_MULT = 1.5
+    DEFAULT_FEES             = 0.0003
+    DEFAULT_SLIPPAGE         = 0.0001
+    # FIX-VBT-1: Fallback values now match config.py defaults exactly
+    DEFAULT_TP_MULT          = 4.0    # was 3.0 — corrected to match TP_ATR_MULT
+    DEFAULT_SL_MULT          = 1.7    # was 1.5 — corrected to match SL_ATR_MULT
     DEFAULT_ABSOLUTE_EDGE_FLOOR = 0.0010
-    DEFAULT_RANK_WINDOW = 500
+    DEFAULT_RANK_WINDOW      = 500
 
 
 def _compute_wilder_atr(df_raw: pd.DataFrame, period: int = 14) -> pd.Series:

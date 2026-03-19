@@ -10,10 +10,12 @@ try:
     DEFAULT_MAX_HOLD = int(config.ORACLE_MAX_HOLD)
     DEFAULT_TP_MULT = float(config.TP_ATR_MULT)
     DEFAULT_SL_MULT = float(config.SL_ATR_MULT)
+    DEFAULT_ATR_PERIOD = int(getattr(config, "ATR_PERIOD", 14))
 except (ImportError, AttributeError):
-    DEFAULT_MAX_HOLD = 96
-    DEFAULT_TP_MULT = 2.0
-    DEFAULT_SL_MULT = 2.0
+    DEFAULT_MAX_HOLD = 52
+    DEFAULT_TP_MULT = 4.0
+    DEFAULT_SL_MULT = 1.7
+    DEFAULT_ATR_PERIOD = 14
 
 
 TARGET_SCHEMA_VERSION = "tbm_first_touch_v1"
@@ -248,7 +250,7 @@ def generate_tbm_targets(
     df_raw: pd.DataFrame,
     df_features: pd.DataFrame,
     max_hold: int = DEFAULT_MAX_HOLD,
-    atr_period: int = 14,
+    atr_period: int = DEFAULT_ATR_PERIOD,
     tp_mult: float = DEFAULT_TP_MULT,
     sl_mult: float = DEFAULT_SL_MULT,
     target_mode: str = "first_touch_class",
@@ -397,7 +399,7 @@ def generate_oracle_targets(
     df_raw: pd.DataFrame,
     df_features: pd.DataFrame,
     max_hold: int = DEFAULT_MAX_HOLD,
-    atr_period: int = 14,
+    atr_period: int = DEFAULT_ATR_PERIOD,
     atr_mult: float = DEFAULT_TP_MULT,
     target_mode: str = "first_touch_class",
     timeout_policy: str = "neutral",

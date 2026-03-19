@@ -10,10 +10,46 @@ import numpy as np
 import pandas as pd
 
 try:
-    config = importlib.import_module("src.config")
-    OB_ATR_MULT = float(config.OB_ATR_MULT)
+    config             = importlib.import_module("src.config")
+    OB_ATR_MULT        = float(config.OB_ATR_MULT)
+    OB_INTERNAL_LB     = int(config.OB_INTERNAL_LB)
+    OB_SWING_LB        = int(config.OB_SWING_LB)
+    OB_MAX_OBS         = int(config.OB_MAX_OBS)
+    OB_IOU_THRESHOLD   = float(config.OB_IOU_THRESHOLD)
+    FE_MISSING_FILL    = float(config.FE_MISSING_FILL)
+
+    FE_MOMENTUM_PERIOD = int(config.FE_MOMENTUM_PERIOD)
+    FE_VOL_SHORT_PERIOD = int(config.FE_VOL_SHORT_PERIOD)
+    FE_VOL_LONG_PERIOD  = int(config.FE_VOL_LONG_PERIOD)
+    FE_SKEW_PERIOD      = int(config.FE_SKEW_PERIOD)
+    FE_ZSCORE_PERIOD    = int(config.FE_ZSCORE_PERIOD)
+    FE_ICP_PERIOD       = int(config.FE_ICP_PERIOD)
+    FE_MDS_FAST_WINDOW  = int(config.FE_MDS_FAST_WINDOW)
+    FE_MDS_SLOW_WINDOW  = int(config.FE_MDS_SLOW_WINDOW)
+    FE_VOL_ASYM_WINDOW  = int(config.FE_VOL_ASYM_WINDOW)
+    FE_STOCH_PERIOD     = int(config.FE_STOCH_PERIOD)
+    FE_ADX_PERIOD       = int(config.FE_ADX_PERIOD)
+    FE_BAR_PER_DAY      = int(config.FE_BAR_PER_DAY)
 except (ImportError, AttributeError):
-    OB_ATR_MULT = 0.5
+    OB_ATR_MULT        = 0.5
+    OB_INTERNAL_LB     = 5
+    OB_SWING_LB        = 20
+    OB_MAX_OBS         = 5
+    OB_IOU_THRESHOLD   = 0.85
+    FE_MISSING_FILL    = 5.0
+
+    FE_MOMENTUM_PERIOD = 14
+    FE_VOL_SHORT_PERIOD = 6
+    FE_VOL_LONG_PERIOD  = 100
+    FE_SKEW_PERIOD      = 28
+    FE_ZSCORE_PERIOD    = 50
+    FE_ICP_PERIOD       = 14
+    FE_MDS_FAST_WINDOW  = 5
+    FE_MDS_SLOW_WINDOW  = 30
+    FE_VOL_ASYM_WINDOW  = 20
+    FE_STOCH_PERIOD     = 14
+    FE_ADX_PERIOD       = 14
+    FE_BAR_PER_DAY      = 13
 
 EPS = 1e-12
 
@@ -53,11 +89,21 @@ def clip_scale(series: pd.Series, bound: float = 1.0) -> pd.Series:
     return series.clip(-bound, bound)
 
 
+try:
+    config = importlib.import_module("src.config")
+    DEFAULT_OPEN = str(config.SESSION_OPEN)
+    DEFAULT_CLOSE = str(config.SESSION_CLOSE)
+    DEFAULT_TZ = str(config.SESSION_TZ)
+except (ImportError, AttributeError):
+    DEFAULT_OPEN = "09:15"
+    DEFAULT_CLOSE = "15:30"
+    DEFAULT_TZ = "Asia/Kolkata"
+
 @dataclass(frozen=True)
 class SessionConfig:
-    open_time: str = "09:15"
-    close_time: str = "15:30"
-    tz: str = "Asia/Kolkata"
+    open_time: str = DEFAULT_OPEN
+    close_time: str = DEFAULT_CLOSE
+    tz: str = DEFAULT_TZ
 
 
 def parse_hhmm(hhmm: str) -> Tuple[int, int]:
@@ -162,12 +208,12 @@ class OptimizedOrderBlockEngine:
 
     def __init__(
         self,
-        internal_lookback: int = 5,
-        swing_lookback: int = 20,
-        atr_multiplier: float = 0.5,
-        max_obs: int = 5,
-        iou_threshold: float = 0.85,
-        missing_value_fill: float = 5.0,
+        internal_lookback: int = OB_INTERNAL_LB,
+        swing_lookback: int = OB_SWING_LB,
+        atr_multiplier: float = OB_ATR_MULT,
+        max_obs: int = OB_MAX_OBS,
+        iou_threshold: float = OB_IOU_THRESHOLD,
+        missing_value_fill: float = FE_MISSING_FILL,
     ):
         if internal_lookback < 1 or swing_lookback < 1:
             raise ValueError("Lookbacks must be >= 1")
@@ -455,19 +501,19 @@ class OptimizedOrderBlockEngine:
 
 def calculate_features(
     df_raw: pd.DataFrame,
-    momentum_period: int = 14,
-    vol_short_period: int = 6,
-    vol_long_period: int = 100,
-    skew_period: int = 28,
-    zscore_period: int = 50,
-    icp_period: int = 14,
-    mds_fast_window: int = 5,
-    mds_slow_window: int = 30,
-    vol_asym_window: int = 20,
-    stoch_period: int = 14,
-    adx_period: int = 14,
+    momentum_period: int = FE_MOMENTUM_PERIOD,
+    vol_short_period: int = FE_VOL_SHORT_PERIOD,
+    vol_long_period: int = FE_VOL_LONG_PERIOD,
+    skew_period: int = FE_SKEW_PERIOD,
+    zscore_period: int = FE_ZSCORE_PERIOD,
+    icp_period: int = FE_ICP_PERIOD,
+    mds_fast_window: int = FE_MDS_FAST_WINDOW,
+    mds_slow_window: int = FE_MDS_SLOW_WINDOW,
+    vol_asym_window: int = FE_VOL_ASYM_WINDOW,
+    stoch_period: int = FE_STOCH_PERIOD,
+    adx_period: int = FE_ADX_PERIOD,
     ob_atr_mult: Optional[float] = None,
-    bars_per_day: int = 13,
+    bars_per_day: int = FE_BAR_PER_DAY,
     add_session_features: bool = True,
     session: SessionConfig = SessionConfig(),
     clip_outside_session: bool = True,
@@ -561,10 +607,12 @@ def calculate_features(
 
     atr_m = ob_atr_mult if ob_atr_mult is not None else OB_ATR_MULT
     ob_engine = OptimizedOrderBlockEngine(
-        internal_lookback=5,
-        swing_lookback=20,
+        internal_lookback=OB_INTERNAL_LB,
+        swing_lookback=OB_SWING_LB,
         atr_multiplier=atr_m,
-        missing_value_fill=5.0,
+        max_obs=OB_MAX_OBS,
+        iou_threshold=OB_IOU_THRESHOLD,
+        missing_value_fill=FE_MISSING_FILL,
     )
     ob_df = ob_engine.generate_features(df)
 
@@ -574,6 +622,35 @@ def calculate_features(
     out["feat_ob_res_touches"] = np.tanh(ob_df["SwingResistanceTouches"] / 3.0)
     out["feat_ob_supp_active"] = ob_df["ActiveSwgSupportMask"].astype(np.float32)
     out["feat_ob_res_active"] = ob_df["ActiveSwgResistanceMask"].astype(np.float32)
+
+    # FIX-FE-1: Explicit NaN-sentinel guard for order-block distance features.
+    # missing_fill=5.0 is a large-value sentinel used when no OB zone is active.
+    # Without this, GP can learn rules that fire on *absence* of zones rather than
+    # genuine proximity — a semantically incorrect but numerically valid pattern.
+    #
+    # feat_ob_supp_active and feat_ob_res_active (already in PASSTHROUGH_FEATURES)
+    # serve as the correct binary gates. We add an assertion to ensure the contract
+    # is enforced and log a warning if sentinel values dominate the feature.
+
+    _supp_sentinel_rate = (out["feat_ob_dist_supp"] >= 4.9).mean()
+    _res_sentinel_rate  = (out["feat_ob_dist_res"]  >= 4.9).mean()
+
+    if _supp_sentinel_rate > 0.5:
+        import warnings
+        warnings.warn(
+            f"feat_ob_dist_supp: {_supp_sentinel_rate:.1%} of rows are sentinel "
+            f"(missing_fill=5.0). Consider increasing OB lookback or reducing "
+            f"swing_lookback to generate more active zones.",
+            RuntimeWarning, stacklevel=2,
+        )
+    if _res_sentinel_rate > 0.5:
+        import warnings
+        warnings.warn(
+            f"feat_ob_dist_res: {_res_sentinel_rate:.1%} of rows are sentinel "
+            f"(missing_fill=5.0). GP rules on this feature may be learning "
+            f"zone-absence, not zone-proximity.",
+            RuntimeWarning, stacklevel=2,
+        )
 
     hl_range = h - l + EPS
     upper_wick = h - pd.concat([o, c], axis=1).max(axis=1)

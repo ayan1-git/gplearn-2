@@ -93,11 +93,11 @@ def load_and_prepare_data(filepath: str):
     df_features = calculate_features(
         df_raw,
         add_session_features=True,
-        session=SessionConfig(open_time="09:15", close_time="15:30", tz="Asia/Kolkata"),
+        session=SessionConfig(),
         clip_outside_session=True,
-        mds_fast_window=5,
-        mds_slow_window=30,
-        vol_asym_window=20,
+        mds_fast_window=cfg.FE_MDS_FAST_WINDOW,
+        mds_slow_window=cfg.FE_MDS_SLOW_WINDOW,
+        vol_asym_window=cfg.FE_VOL_ASYM_WINDOW,
     )
     logger.info("Features: %s", list(df_features.columns))
 
@@ -106,6 +106,7 @@ def load_and_prepare_data(filepath: str):
         max_hold=ORACLE_MAX_HOLD,
         tp_mult=TP_ATR_MULT,
         sl_mult=SL_ATR_MULT,
+        atr_period=cfg.ATR_PERIOD,
     )
     df_raw = df_raw.loc[df_features.index].astype(np.float32)
     return df_raw, df_features, y_targets
@@ -196,7 +197,7 @@ def walk_forward_optimization(
             current_train_start += pd.DateOffset(months=step_months); fold += 1; continue
 
         # ── Rotation fold (every 5th fold: drop high-autocorrelation feature) ────
-        ROTATION_FEATURE = "feat_ob_dist_supp"
+        ROTATION_FEATURE = cfg.ROTATION_FEATURE
         is_rotation_fold = (fold % 5 == 0)
 
         if is_rotation_fold:
@@ -231,7 +232,8 @@ def walk_forward_optimization(
             gp_model    = train_gp_model(X_train, y_train,
                                           seed_programs=seed_programs,
                                           fold=fold,
-                                          feature_proba=feat_proba)
+                                          feature_proba=feat_proba,
+                                          regime=train_regime)
             formula_str = str(gp_model._program)
             features_used   = extract_features_used(formula_str)
             n_features_used = len(features_used)
