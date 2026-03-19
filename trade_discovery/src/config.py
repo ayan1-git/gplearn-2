@@ -8,7 +8,7 @@ DATAPATH = "data/NIFTY 50_30minute 1(in).csv"
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
 ORACLE_MAX_HOLD = 52
 TP_ATR_MULT     = 4.0
-SL_ATR_MULT     = 1.7
+SL_ATR_MULT     = 2.3
 ATR_PERIOD      = 14
 
 # ── EXECUTION FRICTION ────────────────────────────────────────────────────
@@ -37,11 +37,11 @@ GP_MUTATION_BOOST  = 0.15
 GP_HOIST_MUTATION  = 0.1
 GP_POINT_MUTATION  = 0.1
 GP_MAX_SAMPLES     = 0.7
-GP_FEATURE_PRIOR_ALPHA = 2.0   # Dirichlet smoothing strength
+GP_FEATURE_PRIOR_ALPHA = 5.0   # Dirichlet smoothing strength
 
 # 3-Phase schedule — MUST sum to GP_GENERATIONS
-GP_PHASE1_GENS = 10
-GP_PHASE2_GENS = 30
+GP_PHASE1_GENS = 15
+GP_PHASE2_GENS = 25
 GP_PHASE3_GENS = 20
 
 # ── GP FITNESS ────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ MIN_FEATURES_IN_FORMULA = 3     # reject formulas using fewer features
 MAX_PROGRAM_LENGTH      = 80    # reject bloated trees
 
 # ── SIGNAL QUALITY GUARDS ─────────────────────────────────────────────────
-SIGNAL_UNIQUE_FLOOR = 0.15      # raised from 0.005 → rejects true constants
+SIGNAL_UNIQUE_FLOOR = 0.05      # raised from 0.005 → rejects true constants
 
 # ── OOS SURVIVOR THRESHOLDS ───────────────────────────────────────────────
 OOS_MIN_RETURN        = 2.0

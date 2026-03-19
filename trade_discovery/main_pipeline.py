@@ -255,16 +255,39 @@ def walk_forward_optimization(
             entry_pct     = np.percentile(train_signals, ENTRY_PCT)
             exit_pct      = np.percentile(train_signals, EXIT_PCT)
 
-            # Guard 3: degenerate signal — unique_ratio ONLY
-            unique_ratio = len(np.unique(np.round(train_signals, 3))) / len(train_signals)
-            if (unique_ratio < SIGNAL_UNIQUE_FLOOR
-                    or (entry_pct >= 0.95 and exit_pct <= 0.05)):
-                logger.warning("[Fold %d] Degenerate signal — unique_ratio=%.4f.", fold, unique_ratio)
-                seed_programs = None
-                current_train_start += pd.DateOffset(months=step_months); fold += 1; continue
+            # Guard 3: Degenerate signal — dual-metric check
+            # unique_ratio at ndigits=5 (not 3) prevents over-collapsing tanh outputs.
+            # entropy_score measures genuine information content independent of rounding.
+            unique_vals  = np.unique(np.round(train_signals, 5))
+            unique_ratio = len(unique_vals) / len(train_signals)
 
-            logger.info("[Fold %d] Thresholds → Buy: %.4f | Sell: %.4f",
-                        fold, entry_pct, exit_pct)
+            # Normalized Shannon entropy over 20-bin histogram
+            hist, _ = np.histogram(train_signals, bins=20)
+            hist_p   = hist / (hist.sum() + 1e-8)
+            entropy  = -np.sum(hist_p * np.log(hist_p + 1e-8))
+            max_entropy = np.log(20)
+            norm_entropy = entropy / max_entropy   # 0 = constant, 1 = perfectly uniform
+
+            is_constant_signal  = unique_ratio < SIGNAL_UNIQUE_FLOOR
+            is_low_entropy      = norm_entropy < 0.25          # less than 25% of max entropy
+            is_degenerate_thres = (entry_pct >= 0.95 and exit_pct <= 0.05)
+
+            if is_constant_signal or is_low_entropy or is_degenerate_thres:
+                logger.warning(
+                    "[Fold %d] Degenerate signal — unique_ratio=%.4f | norm_entropy=%.4f | "
+                    "entry_pct=%.4f | exit_pct=%.4f.",
+                    fold, unique_ratio, norm_entropy, entry_pct, exit_pct,
+                )
+                seed_programs = None
+                current_train_start += pd.DateOffset(months=step_months)
+                fold += 1
+                continue
+
+            logger.info(
+                "[Fold %d] Signal OK — unique_ratio=%.4f | norm_entropy=%.4f | "
+                "Thresholds → Buy: %.4f | Sell: %.4f",
+                fold, unique_ratio, norm_entropy, entry_pct, exit_pct,
+            )
 
         except Exception as exc:
             logger.error("GP training failed on fold %d: %s", fold, exc, exc_info=True)
