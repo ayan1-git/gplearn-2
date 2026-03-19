@@ -42,8 +42,7 @@ EXIT_PCT            = cfg.EXIT_PCT
 
 MIN_FEATURES        = cfg.MIN_FEATURES_IN_FORMULA
 MAX_PROG_LEN        = cfg.MAX_PROGRAM_LENGTH
-SIGNAL_STD_FLOOR    = cfg.SIGNAL_STD_FLOOR
-SIGNAL_UNIQUE_FLOOR = cfg.SIGNAL_UNIQUE_FLOOR   # FIX 3: 0.005
+SIGNAL_UNIQUE_FLOOR = cfg.SIGNAL_UNIQUE_FLOOR   # FIX 3: raised to 0.15
 
 OOS_MIN_RETURN   = cfg.OOS_MIN_RETURN
 OOS_MIN_SHARPE   = cfg.OOS_MIN_SHARPE
@@ -254,14 +253,11 @@ def walk_forward_optimization(
             entry_pct     = np.percentile(train_signals, ENTRY_PCT)
             exit_pct      = np.percentile(train_signals, EXIT_PCT)
 
-            # Guard 3: degenerate signal  (FIX 3: uses 0.005 from config)
-            signal_std   = float(np.std(train_signals))
+            # Guard 3: degenerate signal — unique_ratio ONLY
             unique_ratio = len(np.unique(np.round(train_signals, 3))) / len(train_signals)
-            if (signal_std < SIGNAL_STD_FLOOR
-                    or unique_ratio < SIGNAL_UNIQUE_FLOOR
+            if (unique_ratio < SIGNAL_UNIQUE_FLOOR
                     or (entry_pct >= 0.95 and exit_pct <= 0.05)):
-                logger.warning("[Fold %d] Degenerate signal — std=%.4f, unique_ratio=%.4f.",
-                               fold, signal_std, unique_ratio)
+                logger.warning("[Fold %d] Degenerate signal — unique_ratio=%.4f.", fold, unique_ratio)
                 seed_programs = None
                 current_train_start += pd.DateOffset(months=step_months); fold += 1; continue
 
@@ -298,9 +294,14 @@ def walk_forward_optimization(
         # ── Seed Decay Logic (replaces the blunt None reset) ─────────────────────
         SOFT_SHARPE = cfg.OOS_MIN_SHARPE * cfg.SEED_SOFT_THRESHOLD_SHARPE
 
+        # Dynamic DD gate — relax for exceptional Sharpe
+        dd_gate = (cfg.OOS_MAX_DRAWDOWN_HIGH_SHARPE
+                   if sharpe > cfg.HIGH_SHARPE_THRESHOLD
+                   else OOS_MAX_DRAWDOWN)
+
         if (total_return > OOS_MIN_RETURN
                 and sharpe   > OOS_MIN_SHARPE
-                and max_dd   < OOS_MAX_DRAWDOWN):
+                and max_dd   < dd_gate):
             # Hard winner — record & carry full elite pool
             feat_combo   = frozenset(extract_features_used(formula_str))
             formula_hash = hash_formula(formula_str)
@@ -345,7 +346,7 @@ def walk_forward_optimization(
             else:
                 seed_programs = None
 
-        elif sharpe > SOFT_SHARPE and max_dd < OOS_MAX_DRAWDOWN * 1.25:
+        elif sharpe > SOFT_SHARPE and max_dd < dd_gate * 1.25:
             # Soft pass — carry only top 50% of elites (decay)
             full_seeds    = extract_elite_programs(gp_model)
             n_keep        = max(1, int(len(full_seeds) * cfg.SEED_DECAY_FRACTION))

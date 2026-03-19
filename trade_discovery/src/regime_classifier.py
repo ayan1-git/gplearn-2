@@ -35,21 +35,26 @@ def adx_value(high: pd.Series, low: pd.Series, close: pd.Series,
 def choppiness_index(high: pd.Series, low: pd.Series, close: pd.Series,
                      period: int = 28) -> float:
     """
-    Choppiness Index. >61.8 = choppy/range-bound, <38.2 = trending.
-    Calculated across the entire series (fold).
+    Standard Choppiness Index using the last `period` bars only.
+    >61.8 = choppy/range-bound, <38.2 = trending.
     """
-    tr   = pd.concat([high - low,
-                      (high - close.shift()).abs(),
-                      (low  - close.shift()).abs()], axis=1).max(axis=1)
-    
-    atr_sum = tr.sum()
-    val_range = high.max() - low.min()
-    
-    if val_range == 0:
-        return 100.0   # maximum chop if no price movement
-        
-    chop = 100 * np.log10(atr_sum / val_range) / np.log10(len(close))
-    return float(chop)
+    tr = pd.concat([high - low,
+                    (high - close.shift()).abs(),
+                    (low  - close.shift()).abs()], axis=1).max(axis=1)
+
+    # KEY FIX: slice to last `period` bars — not full fold
+    tr_window  = tr.iloc[-period:]
+    hi_window  = high.iloc[-period:]
+    lo_window  = low.iloc[-period:]
+
+    atr_sum   = tr_window.sum()
+    val_range = hi_window.max() - lo_window.min()
+
+    if val_range == 0 or len(tr_window) < period // 2:
+        return 100.0   # max chop if no movement or insufficient data
+
+    chop = 100 * np.log10(atr_sum / val_range) / np.log10(period)
+    return float(np.clip(chop, 0.0, 200.0))  # safety clip
 
 
 def classify_regime(df_raw: pd.DataFrame,

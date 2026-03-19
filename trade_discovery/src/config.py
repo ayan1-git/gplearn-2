@@ -48,14 +48,17 @@ FITNESS_DIRECTION_WEIGHT = 0.30
 MIN_FEATURES_IN_FORMULA = 3     # reject formulas using fewer features
 MAX_PROGRAM_LENGTH      = 80    # reject bloated trees
 
-# FIX: was 0.01 — killed valid formulas with ~10-25% unique ratio
-SIGNAL_STD_FLOOR    = 0.05
-SIGNAL_UNIQUE_FLOOR = 0.005     # ← KEY FIX
+# SIGNAL QUALITY GUARDS
+# Removed SIGNAL_STD_FLOOR — unique_ratio is the correct degeneracy detector.
+# std can legitimately be high (1.0–1.5) for valid boolean-composed signals.
+SIGNAL_UNIQUE_FLOOR = 0.15     # raised from 0.005 → rejects true constants
 
 # OOS survivor thresholds
-OOS_MIN_RETURN   = 2.0
-OOS_MIN_SHARPE   = 1.5
-OOS_MAX_DRAWDOWN = 15.0
+OOS_MIN_RETURN        = 2.0
+OOS_MIN_SHARPE        = 1.5
+OOS_MAX_DRAWDOWN      = 15.0
+OOS_MAX_DRAWDOWN_HIGH_SHARPE = 28.0   # relaxed gate for Sharpe > 3.5
+HIGH_SHARPE_THRESHOLD        = 3.5    # above this, apply relaxed DD gate
 
 # Probabilistic Seed Decay
 SEED_SOFT_THRESHOLD_SHARPE = 0.5   # keep seeds if Sharpe ≥ 0.5 × OOS_MIN_SHARPE
