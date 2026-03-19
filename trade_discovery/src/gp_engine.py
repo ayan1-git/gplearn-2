@@ -194,7 +194,7 @@ def train_gp_model(
         init_depth           = (INIT_DEPTH_MIN, INIT_DEPTH_MAX),
         metric               = directional_metric,
         feature_names        = feature_names,
-        n_jobs               = 2,
+        n_jobs               = 1,
         verbose              = 1,
         warm_start           = False,         # managed manually below
         random_state         = fold,          # FIX 1: per-fold diversity
@@ -271,11 +271,11 @@ def train_gp_model(
         est_gp.n_jobs                = 1
         est_gp.fit(X_train.values, y_train.values)
 
-        # PHASE 3: population clean, restore parallelism
+        # PHASE 3: Final refinement — keep n_jobs=1 for stability
         est_gp.parsimony_coefficient = 0.003
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS + PHASE3_GENS
         est_gp.warm_start            = True
-        est_gp.n_jobs                = 2
+        est_gp.n_jobs                = 1      # ← keep at 1, same reason as cold-start
         est_gp.fit(X_train.values, y_train.values)
 
     else:
