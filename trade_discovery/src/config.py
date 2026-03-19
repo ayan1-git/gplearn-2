@@ -3,12 +3,12 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "data/NIFTY 50_30minute 1(in).csv"
+DATAPATH = "data/NIFTYNEXT50_30min_4Y.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
-ORACLE_MAX_HOLD = 52
+ORACLE_MAX_HOLD = 96
 TP_ATR_MULT     = 4.0
-SL_ATR_MULT     = 2.3
+SL_ATR_MULT     = 1.6
 ATR_PERIOD      = 14
 
 # ── EXECUTION FRICTION ────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ ABSOLUTE_EDGE_FLOOR  = 0.01
 CAUSAL_RANK_WINDOW   = 500
 
 # ── WALK-FORWARD ──────────────────────────────────────────────────────────
-TRAIN_MONTHS    = 60
-TEST_MONTHS     = 6
+TRAIN_MONTHS    = 6
+TEST_MONTHS     = 2
 WFO_STEP_MONTHS = 1
 
 # ── GP ENGINE ─────────────────────────────────────────────────────────────
