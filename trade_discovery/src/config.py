@@ -16,8 +16,8 @@ FEE_PER_SIDE = 0.0003
 SLIPPAGE     = 0.0001
 
 # ── SIGNAL THRESHOLDS ─────────────────────────────────────────────────────
-ENTRY_PCT            = 80
-EXIT_PCT             = 20
+ENTRY_PCT            = 85
+EXIT_PCT             = 15
 ABSOLUTE_EDGE_FLOOR  = 0.01
 CAUSAL_RANK_WINDOW   = 500
 

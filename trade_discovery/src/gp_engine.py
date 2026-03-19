@@ -128,14 +128,21 @@ def _and(x1, x2):      return np.minimum(x1, x2)
 def _or(x1, x2):       return np.maximum(x1, x2)
 def _if_then(c, t, f): return np.where(c > 0.0, t, f)
 
-greater_than = make_function(function=_gt_soft, name='gt',      arity=2)
-less_than    = make_function(function=_lt_soft, name='lt',      arity=2)
-logical_and  = make_function(function=_and,     name='and',     arity=2)
-logical_or   = make_function(function=_or,      name='or',      arity=2)
-if_then      = make_function(function=_if_then, name='if_then', arity=3)
+def _protected_div(x1, x2):
+    """Division with denominator floor at 0.001 to prevent overflow."""
+    with np.errstate(divide='ignore', invalid='ignore'):
+        return np.where(np.abs(x2) > 0.001, x1 / x2, np.ones_like(x1))
+
+greater_than  = make_function(function=_gt_soft, name='gt',      arity=2)
+less_than     = make_function(function=_lt_soft, name='lt',      arity=2)
+logical_and   = make_function(function=_and,     name='and',     arity=2)
+logical_or    = make_function(function=_or,      name='or',      arity=2)
+if_then       = make_function(function=_if_then, name='if_then', arity=3)
+protected_div = make_function(function=_protected_div, name='div', arity=2)
 
 TRADING_FUNCTIONS = [
-    'add', 'sub', 'mul', 'div', 'max', 'min', 'abs', 'neg',
+    'add', 'sub', 'mul', protected_div,
+    'max', 'min', 'abs', 'neg',
     greater_than, less_than, logical_and, logical_or, if_then
 ]
 
