@@ -3,11 +3,11 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "data/NIFTYNEXT50_30min_4Y.csv"
+DATAPATH = "data/NIFTY 50_30minute.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
 ORACLE_MAX_HOLD = 96
-TP_ATR_MULT     = 4.0
+TP_ATR_MULT     = 3.8
 SL_ATR_MULT     = 1.6
 ATR_PERIOD      = 14
 
@@ -98,7 +98,7 @@ CHOP_CHOPPY_THRESH  = 61.8
 CHOP_PERIOD         = 28
 
 # ── PIPELINE ROTATION ─────────────────────────────────────────────────────
-ROTATION_FEATURE = "feat_ob_dist_supp"
+ROTATION_FEATURE = "feat_vol_asymmetry"
 
 # ── REGIME HYPERPARAMETERS ───────────────────────────────────────────────
 REGIME_HP: dict = {
@@ -109,7 +109,9 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.005,
         "p_crossover":    0.70,
         "depth_max":      6,             # GP_INIT_DEPTH_MAX
-        "tournament_size": 150,          # GP_TOURNAMENT_SIZE
+        "tournament_size": 150, 
+        "fitness_pearson_w":   0.40,
+        "fitness_direction_w": 0.60,         # GP_TOURNAMENT_SIZE
     },
     # Mean-revert: hard complexity penalty — short precise rules generalise better
     "mean_reverting": {

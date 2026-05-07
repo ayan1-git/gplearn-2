@@ -1,0 +1,272 @@
+2026-05-07 13:24:57 | INFO     | __main__ | Loading raw data from data/NIFTY 50_30minute.csv
+2026-05-07 13:24:57 | INFO     | src.feature_engineering | Building features for 'close' | 36047 rows | ohlc=True.
+2026-05-07 13:24:57 | WARNING  | src.feature_engineering | session_cyclic_features: DatetimeIndex is tz-naive. Assuming timestamps are already in Asia/Kolkata. If your data is UTC or another timezone, localize before calling: index = index.tz_localize('UTC').tz_convert('Asia/Kolkata')
+2026-05-07 13:24:57 | INFO     | src.feature_engineering | Feature matrix built: shape=(36047, 21) | NaN count=41890
+2026-05-07 13:24:57 | INFO     | __main__ | NaN counts per column:
+ewma_vol_span260           59
+ret_norm_1d                59
+ret_norm_3d                59
+ret_norm_6d                59
+ret_norm_13d               59
+ret_norm_26d               59
+ret_norm_65d               65
+ret_norm_130d             130
+ret_norm_260d             260
+macd_8_24                3534
+macd_26_78               3534
+macd_52_156              3534
+vs_factor_span260          59
+feat_efficiency            26
+feat_icp                   12
+feat_momentum_rsi          14
+feat_vol_asymmetry      30339
+feat_local_structure        0
+feat_session_sin            0
+feat_session_cos            0
+feat_vol_squeeze           29
+dtype: int64
+2026-05-07 13:24:57 | INFO     | __main__ | Features built: 36047 rows -> 5215 rows after dropna
+2026-05-07 13:24:58 | INFO     | __main__ | Final aligned dataset: 3277 features, 3277 targets
+2026-05-07 13:24:58 | INFO     | __main__ | ============================================================
+2026-05-07 13:24:58 | INFO     | __main__ | WFO START | train=6m | test=2m | step=1m
+2026-05-07 13:24:58 | INFO     | __main__ | ============================================================
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 1 | Train: 2016-02-17→2016-08-17 | Test: 2016-08-17→2016-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 1: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 2 | Train: 2016-03-17→2016-09-17 | Test: 2016-09-17→2016-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 2: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 3 | Train: 2016-04-17→2016-10-17 | Test: 2016-10-17→2016-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 3: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 4 | Train: 2016-05-17→2016-11-17 | Test: 2016-11-17→2017-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 4: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 5 | Train: 2016-06-17→2016-12-17 | Test: 2016-12-17→2017-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 5: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 6 | Train: 2016-07-17→2017-01-17 | Test: 2017-01-17→2017-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 6: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 7 | Train: 2016-08-17→2017-02-17 | Test: 2017-02-17→2017-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 7: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 8 | Train: 2016-09-17→2017-03-17 | Test: 2017-03-17→2017-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 8: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 9 | Train: 2016-10-17→2017-04-17 | Test: 2017-04-17→2017-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 9: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 10 | Train: 2016-11-17→2017-05-17 | Test: 2017-05-17→2017-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 10: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 11 | Train: 2016-12-17→2017-06-17 | Test: 2017-06-17→2017-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 11: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 12 | Train: 2017-01-17→2017-07-17 | Test: 2017-07-17→2017-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 12: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 13 | Train: 2017-02-17→2017-08-17 | Test: 2017-08-17→2017-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 13: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 14 | Train: 2017-03-17→2017-09-17 | Test: 2017-09-17→2017-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 14: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 15 | Train: 2017-04-17→2017-10-17 | Test: 2017-10-17→2017-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 15: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 16 | Train: 2017-05-17→2017-11-17 | Test: 2017-11-17→2018-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 16: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 17 | Train: 2017-06-17→2017-12-17 | Test: 2017-12-17→2018-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 17: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 18 | Train: 2017-07-17→2018-01-17 | Test: 2018-01-17→2018-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 18: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 19 | Train: 2017-08-17→2018-02-17 | Test: 2018-02-17→2018-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 19: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 20 | Train: 2017-09-17→2018-03-17 | Test: 2018-03-17→2018-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 20: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 21 | Train: 2017-10-17→2018-04-17 | Test: 2018-04-17→2018-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 21: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 22 | Train: 2017-11-17→2018-05-17 | Test: 2018-05-17→2018-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 22: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 23 | Train: 2017-12-17→2018-06-17 | Test: 2018-06-17→2018-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 23: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 24 | Train: 2018-01-17→2018-07-17 | Test: 2018-07-17→2018-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 24: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 25 | Train: 2018-02-17→2018-08-17 | Test: 2018-08-17→2018-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 25: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 26 | Train: 2018-03-17→2018-09-17 | Test: 2018-09-17→2018-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 26: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 27 | Train: 2018-04-17→2018-10-17 | Test: 2018-10-17→2018-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 27: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 28 | Train: 2018-05-17→2018-11-17 | Test: 2018-11-17→2019-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 28: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 29 | Train: 2018-06-17→2018-12-17 | Test: 2018-12-17→2019-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 29: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 30 | Train: 2018-07-17→2019-01-17 | Test: 2019-01-17→2019-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 30: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 31 | Train: 2018-08-17→2019-02-17 | Test: 2019-02-17→2019-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 31: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 32 | Train: 2018-09-17→2019-03-17 | Test: 2019-03-17→2019-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 32: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 33 | Train: 2018-10-17→2019-04-17 | Test: 2019-04-17→2019-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 33: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 34 | Train: 2018-11-17→2019-05-17 | Test: 2019-05-17→2019-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 34: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 35 | Train: 2018-12-17→2019-06-17 | Test: 2019-06-17→2019-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 35: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 36 | Train: 2019-01-17→2019-07-17 | Test: 2019-07-17→2019-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 36: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 37 | Train: 2019-02-17→2019-08-17 | Test: 2019-08-17→2019-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 37: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 38 | Train: 2019-03-17→2019-09-17 | Test: 2019-09-17→2019-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 38: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 39 | Train: 2019-04-17→2019-10-17 | Test: 2019-10-17→2019-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 39: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 40 | Train: 2019-05-17→2019-11-17 | Test: 2019-11-17→2020-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 40: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 41 | Train: 2019-06-17→2019-12-17 | Test: 2019-12-17→2020-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 41: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 42 | Train: 2019-07-17→2020-01-17 | Test: 2020-01-17→2020-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 42: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 43 | Train: 2019-08-17→2020-02-17 | Test: 2020-02-17→2020-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 43: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 44 | Train: 2019-09-17→2020-03-17 | Test: 2020-03-17→2020-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 44: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 45 | Train: 2019-10-17→2020-04-17 | Test: 2020-04-17→2020-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 45: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 46 | Train: 2019-11-17→2020-05-17 | Test: 2020-05-17→2020-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 46: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 47 | Train: 2019-12-17→2020-06-17 | Test: 2020-06-17→2020-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 47: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 48 | Train: 2020-01-17→2020-07-17 | Test: 2020-07-17→2020-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 48: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 49 | Train: 2020-02-17→2020-08-17 | Test: 2020-08-17→2020-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 49: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 50 | Train: 2020-03-17→2020-09-17 | Test: 2020-09-17→2020-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 50: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 51 | Train: 2020-04-17→2020-10-17 | Test: 2020-10-17→2020-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 51: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 52 | Train: 2020-05-17→2020-11-17 | Test: 2020-11-17→2021-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 52: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 53 | Train: 2020-06-17→2020-12-17 | Test: 2020-12-17→2021-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 53: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 54 | Train: 2020-07-17→2021-01-17 | Test: 2021-01-17→2021-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 54: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 55 | Train: 2020-08-17→2021-02-17 | Test: 2021-02-17→2021-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 55: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 56 | Train: 2020-09-17→2021-03-17 | Test: 2021-03-17→2021-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 56: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 57 | Train: 2020-10-17→2021-04-17 | Test: 2021-04-17→2021-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 57: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 58 | Train: 2020-11-17→2021-05-17 | Test: 2021-05-17→2021-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 58: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 59 | Train: 2020-12-17→2021-06-17 | Test: 2021-06-17→2021-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 59: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 60 | Train: 2021-01-17→2021-07-17 | Test: 2021-07-17→2021-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 60: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 61 | Train: 2021-02-17→2021-08-17 | Test: 2021-08-17→2021-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 61: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 62 | Train: 2021-03-17→2021-09-17 | Test: 2021-09-17→2021-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 62: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 63 | Train: 2021-04-17→2021-10-17 | Test: 2021-10-17→2021-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 63: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 64 | Train: 2021-05-17→2021-11-17 | Test: 2021-11-17→2022-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 64: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 65 | Train: 2021-06-17→2021-12-17 | Test: 2021-12-17→2022-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 65: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 66 | Train: 2021-07-17→2022-01-17 | Test: 2022-01-17→2022-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 66: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 67 | Train: 2021-08-17→2022-02-17 | Test: 2022-02-17→2022-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 67: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 68 | Train: 2021-09-17→2022-03-17 | Test: 2022-03-17→2022-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 68: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 69 | Train: 2021-10-17→2022-04-17 | Test: 2022-04-17→2022-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 69: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 70 | Train: 2021-11-17→2022-05-17 | Test: 2022-05-17→2022-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 70: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 71 | Train: 2021-12-17→2022-06-17 | Test: 2022-06-17→2022-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 71: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 72 | Train: 2022-01-17→2022-07-17 | Test: 2022-07-17→2022-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 72: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 73 | Train: 2022-02-17→2022-08-17 | Test: 2022-08-17→2022-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 73: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 74 | Train: 2022-03-17→2022-09-17 | Test: 2022-09-17→2022-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 74: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 75 | Train: 2022-04-17→2022-10-17 | Test: 2022-10-17→2022-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 75: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 76 | Train: 2022-05-17→2022-11-17 | Test: 2022-11-17→2023-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 76: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 77 | Train: 2022-06-17→2022-12-17 | Test: 2022-12-17→2023-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 77: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 78 | Train: 2022-07-17→2023-01-17 | Test: 2023-01-17→2023-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 78: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 79 | Train: 2022-08-17→2023-02-17 | Test: 2023-02-17→2023-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 79: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 80 | Train: 2022-09-17→2023-03-17 | Test: 2023-03-17→2023-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 80: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 81 | Train: 2022-10-17→2023-04-17 | Test: 2023-04-17→2023-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 81: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 82 | Train: 2022-11-17→2023-05-17 | Test: 2023-05-17→2023-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 82: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 83 | Train: 2022-12-17→2023-06-17 | Test: 2023-06-17→2023-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 83: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 84 | Train: 2023-01-17→2023-07-17 | Test: 2023-07-17→2023-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 84: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 85 | Train: 2023-02-17→2023-08-17 | Test: 2023-08-17→2023-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 85: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 86 | Train: 2023-03-17→2023-09-17 | Test: 2023-09-17→2023-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 86: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 87 | Train: 2023-04-17→2023-10-17 | Test: 2023-10-17→2023-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 87: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 88 | Train: 2023-05-17→2023-11-17 | Test: 2023-11-17→2024-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 88: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 89 | Train: 2023-06-17→2023-12-17 | Test: 2023-12-17→2024-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 89: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 90 | Train: 2023-07-17→2024-01-17 | Test: 2024-01-17→2024-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 90: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 91 | Train: 2023-08-17→2024-02-17 | Test: 2024-02-17→2024-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 91: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 92 | Train: 2023-09-17→2024-03-17 | Test: 2024-03-17→2024-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 92: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 93 | Train: 2023-10-17→2024-04-17 | Test: 2024-04-17→2024-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 93: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 94 | Train: 2023-11-17→2024-05-17 | Test: 2024-05-17→2024-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 94: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 95 | Train: 2023-12-17→2024-06-17 | Test: 2024-06-17→2024-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 95: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 96 | Train: 2024-01-17→2024-07-17 | Test: 2024-07-17→2024-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 96: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 97 | Train: 2024-02-17→2024-08-17 | Test: 2024-08-17→2024-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 97: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 98 | Train: 2024-03-17→2024-09-17 | Test: 2024-09-17→2024-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 98: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 99 | Train: 2024-04-17→2024-10-17 | Test: 2024-10-17→2024-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 99: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 100 | Train: 2024-05-17→2024-11-17 | Test: 2024-11-17→2025-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 100: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 101 | Train: 2024-06-17→2024-12-17 | Test: 2024-12-17→2025-02-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 101: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 102 | Train: 2024-07-17→2025-01-17 | Test: 2025-01-17→2025-03-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 102: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 103 | Train: 2024-08-17→2025-02-17 | Test: 2025-02-17→2025-04-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 103: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 104 | Train: 2024-09-17→2025-03-17 | Test: 2025-03-17→2025-05-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 104: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 105 | Train: 2024-10-17→2025-04-17 | Test: 2025-04-17→2025-06-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 105: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 106 | Train: 2024-11-17→2025-05-17 | Test: 2025-05-17→2025-07-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 106: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 107 | Train: 2024-12-17→2025-06-17 | Test: 2025-06-17→2025-08-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 107: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 108 | Train: 2025-01-17→2025-07-17 | Test: 2025-07-17→2025-09-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 108: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 109 | Train: 2025-02-17→2025-08-17 | Test: 2025-08-17→2025-10-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 109: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 110 | Train: 2025-03-17→2025-09-17 | Test: 2025-09-17→2025-11-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 110: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 111 | Train: 2025-04-17→2025-10-17 | Test: 2025-10-17→2025-12-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 111: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | --- FOLD 112 | Train: 2025-05-17→2025-11-17 | Test: 2025-11-17→2026-01-17 ---
+2026-05-07 13:24:58 | WARNING  | __main__ | Fold 112: insufficient data — skipping.
+2026-05-07 13:24:58 | INFO     | __main__ | End of dataset reached. WFO complete after 112 folds.
+2026-05-07 13:24:58 | INFO     | __main__ | ============================================================
+2026-05-07 13:24:58 | INFO     | __main__ | RUN COMPLETE — 0 unique winning formulas.
+2026-05-07 13:24:58 | INFO     | __main__ | ============================================================
+2026-05-07 13:24:58 | WARNING  | __main__ | No robust strategies found.
+Generating Asymmetric TBM targets
+  [schema=tbm_first_touch_v2, mode=first_touch_class, ATR(14), TP_mult=3.8, SL_mult=1.6, max_hold=96]
+  ATR warmup rows dropped: 13 (first 14 bars)
+  Dropping whipsaw rows (Both-SL + Wide-Candle): 1842
+Target generation complete.
+  Scored rows: 3277 | Valid: 3277
+  Label distribution → Long: 1755 | Short: 1502 | Neutral: 20
+  Event distribution → Timeout: 0 | Ambiguous: 5
+                        Both TP: 0 | Both SL: 0 (dropped)
+                        Wide Candle: 0 (dropped)
+                        Long SL only: 5 | Short SL only: 10

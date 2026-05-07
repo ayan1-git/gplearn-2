@@ -87,9 +87,20 @@ def setup_directories() -> None:
 
 def load_and_prepare_data(filepath: str):
     logger.info("Loading raw data from %s", filepath)
-    df_raw = pd.read_csv(filepath, parse_dates=['datetime'], index_col='datetime')
-    df_raw.sort_index(inplace=True)
+    df_raw = pd.read_csv(filepath)
     df_raw.columns = [col.lower() for col in df_raw.columns]
+    
+    if 'datetime' in df_raw.columns:
+        df_raw['datetime'] = pd.to_datetime(df_raw['datetime'])
+        df_raw.set_index('datetime', inplace=True)
+    elif 'date' in df_raw.columns:
+        df_raw['date'] = pd.to_datetime(df_raw['date'])
+        df_raw.set_index('date', inplace=True)
+        df_raw.index.name = 'datetime'
+    else:
+        raise ValueError(f"CSV must contain a 'date' or 'datetime' column. Found: {df_raw.columns.tolist()}")
+
+    df_raw.sort_index(inplace=True)
 
     df_features = calculate_features(
         df_raw,
@@ -100,7 +111,14 @@ def load_and_prepare_data(filepath: str):
         mds_slow_window=cfg.FE_MDS_SLOW_WINDOW,
         vol_asym_window=cfg.FE_VOL_ASYM_WINDOW,
     )
-    logger.info("Features: %s", list(df_features.columns))
+    
+    nan_counts = df_features.isna().sum()
+    logger.info("NaN counts per column:\n%s", nan_counts)
+    
+    n_pre_dropna = len(df_features)
+    df_features = df_features.dropna()
+    n_post_dropna = len(df_features)
+    logger.info("Features built: %d rows -> %d rows after dropna", n_pre_dropna, n_post_dropna)
 
     df_features, y_targets = generate_tbm_targets(
         df_raw, df_features,
@@ -109,6 +127,7 @@ def load_and_prepare_data(filepath: str):
         sl_mult=SL_ATR_MULT,
         atr_period=cfg.ATR_PERIOD,
     )
+    logger.info("Final aligned dataset: %d features, %d targets", len(df_features), len(y_targets))
     df_raw = df_raw.loc[df_features.index].astype(np.float32)
     return df_raw, df_features, y_targets
 

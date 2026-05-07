@@ -150,38 +150,35 @@ TRADING_FUNCTIONS = [
 # CUSTOM FITNESS METRIC
 # ---------------------------------------------------------------------------
 
-def _directional_fitness(y, y_pred, w):
+def _make_fitness_fn(pearson_w: float, direction_w: float):
     """
-    Custom GP fitness: Pearson correlation gated by minimum directional coverage.
-    Penalizes formulas that produce one-sided signals.
-
-    Returns: float in [-1, 1], higher is better (gplearn maximizes by default)
+    Factory: returns a compiled gplearn fitness object with given weights.
+    Called once per fold inside train_gp_model() — not at module load.
     """
-    EPS = 1e-8
+    def _directional_fitness(y, y_pred, w):
+        EPS = 1e-8
 
-    y_mean    = np.mean(y)
-    yp_mean   = np.mean(y_pred)
-    num       = np.sum((y - y_mean) * (y_pred - yp_mean))
-    denom     = (np.std(y) * np.std(y_pred) * len(y)) + EPS
-    pearson_r = num / denom
+        y_mean    = np.mean(y)
+        yp_mean   = np.mean(y_pred)
+        num       = np.sum((y - y_mean) * (y_pred - yp_mean))
+        denom     = (np.std(y) * np.std(y_pred) * len(y)) + EPS
+        pearson_r = num / denom
 
-    long_mask  = (y == 1.0)
-    short_mask = (y == -1.0)
+        long_mask  = (y == 1.0)
+        short_mask = (y == -1.0)
 
-    n_long_pred  = np.sum(y_pred[long_mask]  > 0) if np.any(long_mask)  else 0
-    n_short_pred = np.sum(y_pred[short_mask] < 0) if np.any(short_mask) else 0
-    n_long_true  = np.sum(long_mask)
-    n_short_true = np.sum(short_mask)
+        n_long_pred  = np.sum(y_pred[long_mask]  > 0) if np.any(long_mask)  else 0
+        n_short_pred = np.sum(y_pred[short_mask] < 0) if np.any(short_mask) else 0
+        n_long_true  = np.sum(long_mask)
+        n_short_true = np.sum(short_mask)
 
-    long_coverage  = n_long_pred  / (n_long_true  + EPS)
-    short_coverage = n_short_pred / (n_short_true + EPS)
+        long_cov  = n_long_pred  / (n_long_true  + EPS)
+        short_cov = n_short_pred / (n_short_true + EPS)
+        dir_score = (2 * long_cov * short_cov) / (long_cov + short_cov + EPS)
 
-    dir_score = (2 * long_coverage * short_coverage) / (long_coverage + short_coverage + EPS)
+        return float(pearson_w * pearson_r + direction_w * dir_score)
 
-    return float(PEARSON_WEIGHT * pearson_r + DIRECTION_WEIGHT * dir_score)
-
-
-directional_metric = make_fitness(function=_directional_fitness, greater_is_better=True)
+    return make_fitness(function=_directional_fitness, greater_is_better=True)
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +285,17 @@ def train_gp_model(
 
     # FIX-GP-2: resolve regime hyperparameters
     hp        = _get_regime_hp(regime)
+
+    # resolve per-regime fitness weights
+    pearson_w     = hp.get("fitness_pearson_w",   PEARSON_WEIGHT)
+    direction_w   = hp.get("fitness_direction_w", DIRECTION_WEIGHT)
+    regime_metric = _make_fitness_fn(pearson_w, direction_w)
+
+    logger.info(
+        "[Fold %d] Fitness weights | pearson=%.2f | direction=%.2f",
+        fold, pearson_w, direction_w,
+    )
+
     depth_max = hp["depth_max"] if not seed_programs else min(hp["depth_max"], 6)
     subtree_mut = MUTATION_BOOST if seed_programs else 0.10
 
@@ -326,7 +334,7 @@ def train_gp_model(
         parsimony_coefficient= 0.005,         # overridden per-phase below
         function_set         = TRADING_FUNCTIONS,
         init_depth           = (INIT_DEPTH_MIN, depth_max),
-        metric               = directional_metric,
+        metric               = regime_metric,
         feature_names        = feature_names,
         n_jobs               = 1,
         verbose              = 1,
