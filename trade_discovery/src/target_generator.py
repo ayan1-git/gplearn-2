@@ -260,7 +260,8 @@ def generate_tbm_targets(
     timeout_policy: str     = "neutral",
     ambiguity_policy: str   = "neutral",
     drop_invalid: bool      = True,
-    drop_both_sl: bool      = True,    # BUG-1/4 FIX: exclude whipsaw rows
+    drop_both_sl: bool      = True,    # Filter out -99
+    drop_neutral: bool      = False,   # New: filter out 0.0
     return_metadata: bool   = False,
 ):
     if max_hold <= 0:        raise ValueError("max_hold must be > 0")
@@ -337,6 +338,15 @@ def generate_tbm_targets(
             print(f"  Dropping whipsaw rows (Both-SL + Wide-Candle): {n_whipsaw_dropped}")
         df_features_aligned = df_features_aligned.loc[whipsaw_mask]
         meta_aligned        = meta_aligned.loc[whipsaw_mask]
+
+    # New: Drop Neutral rows (0.0) from training if requested
+    if drop_neutral:
+        neutral_mask        = meta_aligned["target"] != 0.0
+        n_neutral_dropped   = int((~neutral_mask).sum())
+        if n_neutral_dropped > 0:
+            print(f"  Dropping neutral rows (0.0): {n_neutral_dropped}")
+        df_features_aligned = df_features_aligned.loc[neutral_mask]
+        meta_aligned        = meta_aligned.loc[neutral_mask]
 
     y_targets_aligned      = meta_aligned["target"].astype(np.float32)
     y_targets_aligned.name = "target"

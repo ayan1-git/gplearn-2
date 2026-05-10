@@ -3,13 +3,15 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "data/NIFTY 50_30minute.csv"
+DATAPATH = "data/BANK_NIFTY_30min_4Y .csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
-ORACLE_MAX_HOLD = 96
-TP_ATR_MULT     = 3.8
-SL_ATR_MULT     = 1.6
-ATR_PERIOD      = 14
+ORACLE_MAX_HOLD = 26
+TP_ATR_MULT     = 2.5
+SL_ATR_MULT     = 1.9
+ATR_PERIOD      = 20
+DROP_NEUTRAL    = True    # If True, rows with target=0 are removed from training
+DROP_WHIPSAW    = True    # If True, rows with target=-99 (Both-SL) are removed
 
 # ── EXECUTION FRICTION ────────────────────────────────────────────────────
 FEE_PER_SIDE = 0.0003
@@ -29,7 +31,7 @@ WFO_STEP_MONTHS = 1
 # ── GP ENGINE ─────────────────────────────────────────────────────────────
 GP_POPULATION_SIZE = 3000
 GP_GENERATIONS     = 60        # total  — must equal sum of all 3 phases
-GP_TOURNAMENT_SIZE = 100
+GP_TOURNAMENT_SIZE = 7
 GP_INIT_DEPTH_MIN  = 4
 GP_INIT_DEPTH_MAX  = 8
 GP_SEED_FRACTION   = 0.20
@@ -44,6 +46,12 @@ GEL_GENERATIONS        = 50
 GEL_SEEDS_PER_GEN      = 200
 GEL_ELITE_POOL_SIZE    = 100
 GEL_MIN_HOLDOUT_TRADES = 30
+
+# ── DIVERSITY ENFORCEMENT ─────────────────────────────────────────────────
+GEL_STALE_RESET_GENS      = 3      # cold-restart elite pool if best unchanged N gens
+GEL_MAX_SEED_DUPLICATES   = 2      # max copies of same formula string in elite pool
+GEL_DIVERSITY_FRACTION    = 0.30   # fraction of elite pool reserved for diverse programs
+GEL_FEATURE_PRIOR_DECAY   = 0.7    # exponential decay on feat_win_counts each gen
 
 # 3-Phase schedule — MUST sum to GP_GENERATIONS
 GP_PHASE1_GENS = 15
@@ -115,9 +123,9 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.005,
         "p_crossover":    0.70,
         "depth_max":      6,             # GP_INIT_DEPTH_MAX
-        "tournament_size": 150, 
+        "tournament_size": 12,
         "fitness_pearson_w":   0.40,
-        "fitness_direction_w": 0.60,         # GP_TOURNAMENT_SIZE
+        "fitness_direction_w": 0.60,
     },
     # Mean-revert: hard complexity penalty — short precise rules generalise better
     "mean_reverting": {
@@ -126,7 +134,7 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.008,
         "p_crossover":    0.55,
         "depth_max":      6,
-        "tournament_size": 75,
+        "tournament_size": 7,
     },
     # Choppy: strongest length penalty + small tournaments → diversity pressure
     "choppy_random_walk": {
@@ -135,7 +143,7 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.010,
         "p_crossover":    0.50,
         "depth_max":      5,
-        "tournament_size": 60,
+        "tournament_size": 5,
     },
     # Trending but noisy: balanced
     "trending_random_walk": {
@@ -144,7 +152,7 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.004,
         "p_crossover":    0.65,
         "depth_max":      7,
-        "tournament_size": 100,          # GP_TOURNAMENT_SIZE
+        "tournament_size": 10,
     },
     # Fallback / uncertain
     "random_walk": {
@@ -153,7 +161,7 @@ REGIME_HP: dict = {
         "parsimony_p3":   0.003,
         "p_crossover":    0.60,
         "depth_max":      8,             # GP_INIT_DEPTH_MAX
-        "tournament_size": 100,          # GP_TOURNAMENT_SIZE
+        "tournament_size": 7,
     },
 }
 
@@ -180,3 +188,6 @@ GP_RESTARTS      = 3
 IMBALANCE_LAMBDA = 2.0
 ACTIVITY_FLOOR   = 0.08
 ACTIVITY_LAMBDA  = 0.5
+
+# ── TALIB FEATURE EXPANSION ───────────────────────────────────────────────────
+USE_TALIB_FEATURES = True   # set False to skip without touching feature_engineering.py

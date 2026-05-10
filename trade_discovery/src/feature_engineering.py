@@ -39,6 +39,21 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
+# ── TA-Lib expansion (optional, OHLC-only) ───────────────────────────────────
+try:
+    from src.config import USE_TALIB_FEATURES as _USE_TALIB
+except ImportError:
+    _USE_TALIB = True
+
+try:
+    if _USE_TALIB:
+        from src.talib_features import build_talib_features, TALIB_PASSTHROUGH, TALIB_SCALE
+        _TALIB_FEATURES_AVAILABLE = True
+    else:
+        _TALIB_FEATURES_AVAILABLE = False
+except ImportError:
+    _TALIB_FEATURES_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -1392,7 +1407,19 @@ def calculate_features(
 
     fe = FeatureEngineer(config=config)
     # The new FE handles alignment and OHLC validation internally.
-    return fe.build(df_raw['close'], ohlc=df_raw, include_target=False, dropna=False)
+    result = fe.build(df_raw['close'], ohlc=df_raw, include_target=False, dropna=False)
+
+    # ── TA-Lib feature expansion ──────────────────────────────────────────────
+    if _TALIB_FEATURES_AVAILABLE:
+        talib_df = build_talib_features(df_raw)
+        result = result.join(talib_df, how='left')
+        # Re-assert uniform float64 (mirrors FeatureEngineer.build() check)
+        if not (result.dtypes == 'float64').all():
+            bad = result.dtypes[result.dtypes != 'float64'].to_dict()
+            raise ValueError(f"talib_features introduced non-float64 columns: {bad}")
+    # ─────────────────────────────────────────────────────────────────────────
+
+    return result
 
 
 # ── Feature Bucket Lists (for tanh-scaling decisions in main_pipeline) ────────
@@ -1416,6 +1443,10 @@ SCALE_FEATURES = [
     f"vs_factor_span{_bucket_cfg.ewma_span}",
     "feat_vol_squeeze",
 ]
+
+if _TALIB_FEATURES_AVAILABLE:
+    PASSTHROUGH_FEATURES = PASSTHROUGH_FEATURES + TALIB_PASSTHROUGH
+    SCALE_FEATURES = SCALE_FEATURES + TALIB_SCALE
 
 
 # ──────────────────────────────────────────────────────────────────────────────

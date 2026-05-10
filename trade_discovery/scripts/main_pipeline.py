@@ -14,6 +14,13 @@ No other src/ files need changes.
 import gc
 import logging
 import os
+import sys
+
+# ── Ensure `src/` is resolvable regardless of working directory ───────────────
+PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+sys.path.insert(0, PROJECT_ROOT)
+os.chdir(PROJECT_ROOT)  # ensures all relative paths (data/, outputs/) work
+# ──────────────────────────────────────────────────────────────────────────────
 from collections import Counter
 from typing import List, Tuple
 
@@ -47,11 +54,17 @@ MIN_OOS_TRADES   = cfg.MIN_OOS_TRADES
 
 # ── GEL-SPECIFIC CONFIG ──────────────────────────────────────────────────────
 # Add these keys to src/config.py to tune them; defaults are applied below.
-HOLDOUT_FRACTION   = getattr(cfg, 'GEL_HOLDOUT_FRACTION',   0.20)   # last 20% = fixed OOS
-GEL_GENERATIONS    = getattr(cfg, 'GEL_GENERATIONS',        50)     # outer evolutionary generations
-SEEDS_PER_GEN      = getattr(cfg, 'GEL_SEEDS_PER_GEN',      200)    # elite programs carried forward
-ELITE_POOL_SIZE    = getattr(cfg, 'GEL_ELITE_POOL_SIZE',    100)    # max winners on leaderboard
-MIN_HOLDOUT_TRADES = getattr(cfg, 'GEL_MIN_HOLDOUT_TRADES', 30)     # min trades on holdout to qualify
+HOLDOUT_FRACTION   = getattr(cfg, 'GEL_HOLDOUT_FRACTION',   0.20)
+GEL_GENERATIONS    = getattr(cfg, 'GEL_GENERATIONS',        50)
+SEEDS_PER_GEN      = getattr(cfg, 'GEL_SEEDS_PER_GEN',      200)
+ELITE_POOL_SIZE    = getattr(cfg, 'GEL_ELITE_POOL_SIZE',    100)
+MIN_HOLDOUT_TRADES = getattr(cfg, 'GEL_MIN_HOLDOUT_TRADES', 30)
+
+# Diversity enforcement
+STALE_RESET_GENS      = getattr(cfg, 'GEL_STALE_RESET_GENS',     3)
+MAX_SEED_DUPLICATES   = getattr(cfg, 'GEL_MAX_SEED_DUPLICATES',  2)
+DIVERSITY_FRACTION    = getattr(cfg, 'GEL_DIVERSITY_FRACTION',   0.30)
+FEATURE_PRIOR_DECAY   = getattr(cfg, 'GEL_FEATURE_PRIOR_DECAY',  0.70)
 
 # ── IMPORTS ──────────────────────────────────────────────────────────────────
 from src.feature_engineering import (calculate_features,
@@ -161,6 +174,8 @@ def load_and_prepare_data(filepath: str):
         tp_mult=TP_ATR_MULT,
         sl_mult=SL_ATR_MULT,
         atr_period=cfg.ATR_PERIOD,
+        drop_both_sl=getattr(cfg, "DROP_WHIPSAW", True),
+        drop_neutral=getattr(cfg, "DROP_NEUTRAL", False),
     )
     logger.info("Final aligned dataset: %d features, %d targets",
                 len(df_features), len(y_targets))
@@ -379,23 +394,30 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
     feat_win_counts        = Counter()
     gen_meta_rows: List    = []
 
+    # Stale attractor tracking (anti-collapse)
+    _stale_count    = 0
+    _last_best_hash = None
+
     # ── Generational loop ─────────────────────────────────────────────────────
     for gen in range(1, GEL_GENERATIONS + 1):
         logger.info("")
         logger.info("━" * 60)
-        logger.info("GEN %d / %d | Pool: %d programs | Winners: %d / %d",
-                    gen, GEL_GENERATIONS, len(elite_pool), len(winners), ELITE_POOL_SIZE)
+        logger.info("GEN %d / %d | Pool: %d programs | Winners: %d / %d | Stale: %d/%d",
+                    gen, GEL_GENERATIONS, len(elite_pool), len(winners),
+                    ELITE_POOL_SIZE, _stale_count, STALE_RESET_GENS)
         logger.info("━" * 60)
 
         # Feature prior (Dirichlet-smoothed from winner history)
         all_feats  = list(X_train_s.columns)
         alpha      = cfg.GP_FEATURE_PRIOR_ALPHA
         raw_counts = np.array([feat_win_counts.get(f, 0) for f in all_feats], dtype=float)
+        # Exponential decay to prevent positive-feedback lock-in on early winners
+        raw_counts *= FEATURE_PRIOR_DECAY
         feat_proba = (raw_counts + alpha) / (raw_counts + alpha).sum()
         if raw_counts.max() > 0:
             top_feat = all_feats[int(np.argmax(raw_counts))]
-            logger.info("[Gen %d] Feature prior — most rewarded: '%s' (%d wins)",
-                        gen, top_feat, int(raw_counts.max()))
+            logger.info("[Gen %d] Feature prior — most rewarded: '%s' (decayed=%.1f)",
+                        gen, top_feat, raw_counts.max())
         else:
             logger.info("[Gen %d] Feature prior — uniform (no winners yet, alpha=%.1f)", gen, alpha)
 
@@ -554,9 +576,43 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # ── Always extract elite pool ─────────────────────────────────────────
         # Even a formula that fails OOS contributes useful building blocks.
         # The population contains 3000 programs; we carry the best 200 forward.
-        elite_pool = extract_elite_programs(gp, top_n=SEEDS_PER_GEN)
+        elite_pool = extract_elite_programs(
+            gp, top_n=SEEDS_PER_GEN,
+            max_duplicates=MAX_SEED_DUPLICATES,
+            diversity_fraction=DIVERSITY_FRACTION,
+        )
         logger.info("[Gen %d] Elite pool: %d programs → seeding gen %d.",
                     gen, len(elite_pool), gen + 1)
+
+        # ── Stale attractor detection ───────────────────────────────────────
+        try:
+            _current_best_hash = hash_formula(formula_str)
+        except Exception:
+            _current_best_hash = None
+
+        if _current_best_hash and _current_best_hash == _last_best_hash:
+            _stale_count += 1
+        else:
+            _stale_count = 0
+            _last_best_hash = _current_best_hash
+
+        if _stale_count >= STALE_RESET_GENS:
+            logger.warning(
+                "█" * 60 + "\n"
+                "[Gen %d] STALE ATTRACTOR DETECTED (%d gens unchanged)\n"
+                "  Formula: %s\n"
+                "  ACTION : Nuking elite pool → cold restart next gen.\n" +
+                "█" * 60,
+                gen, _stale_count, formula_str[:120]
+            )
+            elite_pool = []
+            _stale_count = 0
+            _last_best_hash = None
+            # Also decay feature prior harder to break the attractor
+            for k in list(feat_win_counts.keys()):
+                feat_win_counts[k] = int(feat_win_counts[k] * 0.3)
+                if feat_win_counts[k] <= 0:
+                    del feat_win_counts[k]
 
         del gp
         gc.collect()

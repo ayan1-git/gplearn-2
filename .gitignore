@@ -23,6 +23,10 @@ trade_discovery/data/*.h5
 trade_discovery/outputs/
 outputs/
 
+# Logs
+trade_discovery/logs/
+*.log
+
 # IDEs
 .idea/
 *.swp

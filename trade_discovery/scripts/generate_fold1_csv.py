@@ -5,7 +5,9 @@ import os
 import sys
 
 # Ensure we can import from src
-sys.path.append(os.getcwd())
+PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+sys.path.insert(0, PROJECT_ROOT)
+os.chdir(PROJECT_ROOT)
 
 fe = importlib.import_module('src.01_feature_engineering')
 tg = importlib.import_module('src.02_target_generator')

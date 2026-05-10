@@ -10,6 +10,13 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import sys
+
+# ── Ensure `src/` is resolvable regardless of working directory ───────────────
+PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+sys.path.insert(0, PROJECT_ROOT)
+os.chdir(PROJECT_ROOT)
+# ──────────────────────────────────────────────────────────────────────────────
 
 # ---------------------------------------------------------------------------
 # Logging

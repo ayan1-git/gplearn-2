@@ -64,7 +64,7 @@ except NameError:
             "parsimony_p3":   0.002,
             "p_crossover":    0.70,
             "depth_max":      8,
-            "tournament_size": 100,
+            "tournament_size": 12,
         },
         # Mean-revert: hard complexity penalty — short precise rules generalise better
         "mean_reverting": {
@@ -73,7 +73,7 @@ except NameError:
             "parsimony_p3":   0.008,
             "p_crossover":    0.55,
             "depth_max":      6,
-            "tournament_size": 75,
+            "tournament_size": 7,
         },
         # Choppy: strongest length penalty + small tournaments → diversity pressure
         "choppy_random_walk": {
@@ -82,7 +82,7 @@ except NameError:
             "parsimony_p3":   0.010,
             "p_crossover":    0.50,
             "depth_max":      5,
-            "tournament_size": 60,
+            "tournament_size": 5,
         },
         # Trending but noisy: balanced
         "trending_random_walk": {
@@ -91,7 +91,7 @@ except NameError:
             "parsimony_p3":   0.004,
             "p_crossover":    0.65,
             "depth_max":      7,
-            "tournament_size": 100,
+            "tournament_size": 10,
         },
         # Fallback / uncertain
         "random_walk": {
@@ -100,7 +100,7 @@ except NameError:
             "parsimony_p3":   0.003,
             "p_crossover":    0.60,
             "depth_max":      8,
-            "tournament_size": 100,
+            "tournament_size": 7,
         },
     }
 
@@ -190,23 +190,110 @@ def hash_formula(program_str: str) -> str:
     return hashlib.sha256(program_str.encode()).hexdigest()
 
 
-def extract_elite_programs(fitted_gp: SymbolicRegressor, top_n: int = None) -> list:
+def extract_elite_programs(
+    fitted_gp: SymbolicRegressor,
+    top_n: int = None,
+    max_duplicates: int = 2,
+    diversity_fraction: float = 0.30,
+) -> list:
     """
-    Extract deep-copies of the top-N fittest _Program objects from the
-    last generation of a fitted SymbolicRegressor.
+    Extract elite programs with diversity enforcement to prevent gene pool collapse.
+
+    Strategy:
+      1. Hard dedup — at most `max_duplicates` copies of any formula string.
+      2. Top (1 − diversity_fraction) slots filled by raw fitness.
+      3. Remaining slots filled via greedy farthest-first (trigram Jaccard
+         distance) to maximise structural diversity in the seed pool.
     """
     if not hasattr(fitted_gp, '_programs') or not fitted_gp._programs:
-        logger.warning("No _programs found on fitted model — returning empty seed list.")
+        logger.warning("No _programs found — returning empty seed list.")
         return []
 
     last_gen = fitted_gp._programs[-1]
     top_n    = top_n or int(SEED_FRACTION * POPULATION_SIZE)
 
-    valid = [p for p in last_gen if p is not None and hasattr(p, 'fitness_')]
-    elite = sorted(valid, key=lambda p: p.fitness_, reverse=True)[:top_n]
+    # Build (program, fitness, formula_str) tuples
+    candidates = []
+    for p in last_gen:
+        if p is not None and hasattr(p, 'fitness_'):
+            try:
+                s = str(p)
+            except Exception:
+                continue
+            candidates.append((p, p.fitness_, s))
 
-    logger.info("Extracted %d elite programs (pool size=%d).", len(elite), len(valid))
-    return [copy.deepcopy(p) for p in elite]
+    if not candidates:
+        return []
+
+    candidates.sort(key=lambda t: t[1], reverse=True)
+
+    # ── Hard dedup ────────────────────────────────────────────────────────
+    formula_counts: dict = {}
+    deduped = []
+    for p, fit, s in candidates:
+        count = formula_counts.get(s, 0)
+        if count < max_duplicates:
+            deduped.append((p, fit, s))
+            formula_counts[s] = count + 1
+
+    n_unique = len(formula_counts)
+    logger.info("Elite dedup: %d → %d (max_%d_copies | %d unique formulas).",
+                len(candidates), len(deduped), max_duplicates, n_unique)
+
+    if len(deduped) <= top_n:
+        result = [copy.deepcopy(t[0]) for t in deduped]
+        logger.info("Extracted %d elite programs (all deduped fit in pool).", len(result))
+        return result
+
+    # ── Diversity-aware selection ─────────────────────────────────────────
+    n_fitness = max(1, int(top_n * (1 - diversity_fraction)))
+    selected_indices = list(range(n_fitness))
+    selected_set     = set(selected_indices)
+
+    # Trigram sets for Jaccard distance
+    def _trigrams(s):
+        if len(s) < 3:
+            return frozenset([s])
+        return frozenset(s[i:i+3] for i in range(len(s) - 2))
+
+    all_tg = [_trigrams(s) for _, _, s in deduped]
+
+    # Greedy farthest-first fill
+    n_diverse  = top_n - n_fitness
+    remaining  = set(range(n_fitness, len(deduped)))
+
+    for _ in range(min(n_diverse, len(remaining))):
+        best_idx   = -1
+        best_score = -1.0
+
+        for idx in remaining:
+            tg = all_tg[idx]
+            min_dist = 1.0
+            for sel_idx in selected_set:
+                inter = len(tg & all_tg[sel_idx])
+                union = len(tg | all_tg[sel_idx])
+                dist  = 1.0 - (inter / max(union, 1))
+                if dist < min_dist:
+                    min_dist = dist
+                    if min_dist <= 0.0:
+                        break
+            # Blend diversity with fitness rank so we don't pick total garbage
+            rank_frac = 1.0 - idx / len(deduped)
+            score     = min_dist * (0.3 + 0.7 * rank_frac)
+            if score > best_score:
+                best_score = score
+                best_idx   = idx
+
+        if best_idx >= 0:
+            selected_indices.append(best_idx)
+            selected_set.add(best_idx)
+            remaining.discard(best_idx)
+
+    result = [copy.deepcopy(deduped[i][0]) for i in selected_indices]
+    logger.info("Extracted %d elite programs (%d fitness + %d diversity | pool=%d, unique=%d).",
+                len(result), n_fitness, len(result) - n_fitness,
+                len(candidates), n_unique)
+    return result
 
 
 # ---------------------------------------------------------------------------
