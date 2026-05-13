@@ -2,7 +2,7 @@
 talib_features.py
 =================
 Automated TA-Lib feature expansion for OHLC data.
-Pre-calculates feature buckets at module load to ensure compatibility with 
+Pre-calculates feature buckets at module load time to ensure compatibility with 
 the pipeline's static registration system.
 """
 import logging
@@ -42,17 +42,15 @@ if _TALIB_AVAILABLE:
                 _FUNC_REGISTRY.append((_f_name, _group, True, 1))
                 continue
             
-            # Others: determine output count via a dummy call or meta-analysis
-            # For simplicity, we use a known list of multi-output functions
+            # Others: determine output count via a known list of multi-output functions
             _multi = {
                 "BBANDS": 3, "MACD": 3, "MACDEXT": 3, "MACDFIX": 3, 
-                "STOCH": 2, "STOCHF": 2, "STOCHRSI": 2, "MAMA": 2, "AROON": 2
+                "STOCH": 2, "STOCHF": 2, "STOCHRSI": 2, "MAMA": 2, "AROON": 2,
+                "MINMAX": 2, "PHASOR": 2, "SINE": 2
             }
             _count = _multi.get(_f_name, 1)
             
             # Heuristic for bucket assignment
-            # Oscillators -> Passthrough (we will normalize to [-1, 1])
-            # Price/Volatility -> Scale (we will use Tanh)
             _is_osc = any(x in _f_name for x in ["RSI", "MFI", "ADX", "STOCH", "WILLR", "AROON", "ULTOSC", "CCI"])
             
             for _i in range(_count):
@@ -66,8 +64,13 @@ if _TALIB_AVAILABLE:
             _FUNC_REGISTRY.append((_f_name, _group, False, _count))
 
 def _safe(arr: np.ndarray) -> np.ndarray:
-    """Cast to float64 and replace inf with nan."""
+    """Cast to float64 and replace inf with nan. Ensures 1D."""
+    if arr is None: return np.array([])
     out = np.array(arr, dtype=np.float64)
+    if out.ndim > 1:
+        # Some multi-output funcs might return 2D if not handled, flatten or take first
+        # But we should handle them in the loop
+        out = out.flatten()
     out[~np.isfinite(out)] = np.nan
     return out
 
@@ -98,22 +101,7 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
                 feats[f"talib_{f_name.lower()}"] = _safe(outputs) / 100.0
                 continue
 
-            # Overlap Studies (Price levels)
-            if group == "Overlap Studies":
-                if f_name in ["SAR", "SAREXT"]:
-                    val = _safe(func(h, l))
-                    feats[f"talib_{f_name.lower()}"] = np.tanh((c - val) / (val * 0.01 + _EPS))
-                elif count > 1:
-                    res = func(c)
-                    for i, arr in enumerate(res):
-                        val = _safe(arr)
-                        feats[f"talib_{f_name.lower()}_{i}"] = np.tanh((c - val) / (val * 0.01 + _EPS))
-                else:
-                    val = _safe(func(c))
-                    feats[f"talib_{f_name.lower()}"] = np.tanh((c - val) / (val * 0.01 + _EPS))
-                continue
-
-            # General Indicators
+            # ── 1. Determine Inputs & Call ──
             try:
                 outputs = func(h, l, c)
             except Exception:
@@ -125,23 +113,44 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
                     except Exception:
                         continue
 
-            if count > 1 and isinstance(outputs, tuple):
-                for i, out_arr in enumerate(outputs):
-                    name = f"talib_{f_name.lower()}_{i}"
-                    feats[name] = _apply_smart_normalization(f_name, _safe(out_arr), price_std)
+            # ── 2. Handle Outputs ──
+            if count > 1:
+                # Expecting a tuple or 2D array
+                if isinstance(outputs, (list, tuple)):
+                    for i in range(count):
+                        name = f"talib_{f_name.lower()}_{i}"
+                        if i < len(outputs):
+                            val = _safe(outputs[i])
+                            feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                        else:
+                            feats[name] = np.full(len(c), np.nan)
+                elif isinstance(outputs, np.ndarray) and outputs.ndim == 2:
+                    # Some return (2, N) ndarray
+                    for i in range(min(count, outputs.shape[0])):
+                        name = f"talib_{f_name.lower()}_{i}"
+                        val = _safe(outputs[i])
+                        feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                else:
+                    # Fallback for unexpected single output
+                    feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, _safe(outputs), price_std, group, c)
             else:
-                name = f"talib_{f_name.lower()}"
-                feats[name] = _apply_smart_normalization(f_name, _safe(outputs), price_std)
+                feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, _safe(outputs), price_std, group, c)
                         
         except Exception:
             continue
 
     return pd.DataFrame(feats, index=idx, dtype=np.float64)
 
-def _apply_smart_normalization(f_name: str, arr: np.ndarray, price_std: float) -> np.ndarray:
+def _apply_smart_normalization(f_name: str, arr: np.ndarray, price_std: float, group: str, close: np.ndarray) -> np.ndarray:
+    # Overlap Studies (Price levels) -> Deviation from close
+    if group == "Overlap Studies":
+        return np.tanh((close - arr) / (arr * 0.01 + _EPS))
+
     # Bounded Oscillators [0, 100] -> [-1, 1]
     if any(x in f_name for x in ["RSI", "MFI", "ADX", "STOCH", "WILLR", "AROON", "ULTOSC", "CCI"]):
-        if np.nanmin(arr) < -50: 
+        # Safe check for range
+        amin, amax = np.nanmin(arr), np.nanmax(arr)
+        if amin < -50: # Likely -100 to 0
             return (arr + 50) / 50.0
         return (arr - 50) / 50.0
 
