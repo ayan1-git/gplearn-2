@@ -3,11 +3,11 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "data/BANK_NIFTY_30min_4Y .csv"
+DATAPATH = "data/Nifty-30min-4year(in).csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
 ORACLE_MAX_HOLD = 26
-TP_ATR_MULT     = 2.5
+TP_ATR_MULT     = 2.4
 SL_ATR_MULT     = 1.9
 ATR_PERIOD      = 20
 DROP_NEUTRAL    = True    # If True, rows with target=0 are removed from training
