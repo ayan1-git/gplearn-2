@@ -1873,6 +1873,10 @@ PASSTHROUGH_FEATURES = [
     "feat_ob_res_touches",
     "feat_rejection_upper",
     "feat_rejection_lower",
+    "feat_ob_supp_mask",
+    "feat_ob_res_mask",
+    "feat_ob_supp_level",
+    "feat_ob_res_level",
 ]
 
 SCALE_FEATURES = [
@@ -1882,6 +1886,8 @@ SCALE_FEATURES = [
     "feat_ichimoku_dist_kijun",
     "feat_ichimoku_dist_span_a",
     "feat_ichimoku_dist_span_b",
+    "feat_ob_supp_dist",
+    "feat_ob_res_dist",
 ]
 
 if _TALIB_FEATURES_AVAILABLE:
