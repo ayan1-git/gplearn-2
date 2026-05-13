@@ -10,14 +10,6 @@ env/
 *$py.class
 
 # Data Files
-trade_discovery/data/*.csv
-trade_discovery/data/*.parquet
-trade_discovery/data/*.pkl
-trade_discovery/data/*.h5
-*.csv
-*.parquet
-*.pkl
-*.h5
 
 # Outputs
 trade_discovery/outputs/
