@@ -1252,8 +1252,8 @@ class OptimizedOrderBlockEngine:
         out_swg_res = np.full(n, np.nan, dtype=np.float64)
         out_int_supp = np.full(n, np.nan, dtype=np.float64)
         out_int_res = np.full(n, np.nan, dtype=np.float64)
-        out_swg_supp_touches = np.zeros(n, dtype=np.float32)
-        out_swg_res_touches = np.zeros(n, dtype=np.float32)
+        out_swg_supp_touches = np.zeros(n, dtype=np.float64)
+        out_swg_res_touches = np.zeros(n, dtype=np.float64)
         mask_swg_supp = np.zeros(n, dtype=bool)
         mask_swg_res = np.zeros(n, dtype=bool)
 
@@ -1338,11 +1338,11 @@ class OptimizedOrderBlockEngine:
                 out_int_res[i] = min(int_bear, key=lambda x: x["bot"])["bot"]
 
         result["feat_ob_supp_level"] = out_swg_supp
-        result["feat_ob_supp_touches"] = out_swg_supp_touches
+        result["feat_ob_supp_touches"] = out_swg_supp_touches.astype(np.float64)
         result["feat_ob_supp_mask"] = mask_swg_supp.astype(np.float64)
 
         result["feat_ob_res_level"] = out_swg_res
-        result["feat_ob_res_touches"] = out_swg_res_touches
+        result["feat_ob_res_touches"] = out_swg_res_touches.astype(np.float64)
         result["feat_ob_res_mask"] = mask_swg_res.astype(np.float64)
 
         dist_supp = (result["close"] - result["feat_ob_supp_level"]) / (result["close"] + EPS)
