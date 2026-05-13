@@ -423,7 +423,7 @@ def train_gp_model(
         init_depth           = (INIT_DEPTH_MIN, depth_max),
         metric               = regime_metric,
         feature_names        = feature_names,
-        n_jobs               = 1,
+        n_jobs               = -1,
         verbose              = 1,
         warm_start           = False,
         random_state         = fold,
@@ -495,7 +495,7 @@ def train_gp_model(
         est_gp.parsimony_coefficient = hp["parsimony_p2"]
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS
         est_gp.warm_start            = True
-        est_gp.n_jobs                = 1
+        est_gp.n_jobs                = -1
         _apply_feature_proba(est_gp, feature_proba, feature_names, fold)  # FIX-GP-1
         est_gp.fit(X_train.values, y_train.values)
 
@@ -503,7 +503,7 @@ def train_gp_model(
         est_gp.parsimony_coefficient = hp["parsimony_p3"]
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS + PHASE3_GENS
         est_gp.warm_start            = True
-        est_gp.n_jobs                = 1
+        est_gp.n_jobs                = -1
         _apply_feature_proba(est_gp, feature_proba, feature_names, fold)  # FIX-GP-1
         est_gp.fit(X_train.values, y_train.values)
 
@@ -521,6 +521,7 @@ def train_gp_model(
         est_gp.parsimony_coefficient = hp["parsimony_p2"]
         est_gp.generations           = PHASE1_GENS + PHASE2_GENS
         est_gp.warm_start            = True
+        est_gp.n_jobs                = -1
         _apply_feature_proba(est_gp, feature_proba, feature_names, fold)  # FIX-GP-1
         est_gp.fit(X_train.values, y_train.values)
 
@@ -528,6 +529,7 @@ def train_gp_model(
         est_gp.parsimony_coefficient = hp["parsimony_p3"]
         est_gp.generations           = GENERATIONS
         est_gp.warm_start            = True
+        est_gp.n_jobs                = -1
         _apply_feature_proba(est_gp, feature_proba, feature_names, fold)  # FIX-GP-1
         est_gp.fit(X_train.values, y_train.values)
 
