@@ -1339,17 +1339,17 @@ class OptimizedOrderBlockEngine:
 
         result["feat_ob_supp_level"] = out_swg_supp
         result["feat_ob_supp_touches"] = out_swg_supp_touches
-        result["feat_ob_supp_mask"] = mask_swg_supp.astype(np.int8)
+        result["feat_ob_supp_mask"] = mask_swg_supp.astype(np.float64)
 
         result["feat_ob_res_level"] = out_swg_res
         result["feat_ob_res_touches"] = out_swg_res_touches
-        result["feat_ob_res_mask"] = mask_swg_res.astype(np.int8)
+        result["feat_ob_res_mask"] = mask_swg_res.astype(np.float64)
 
         dist_supp = (result["close"] - result["feat_ob_supp_level"]) / (result["close"] + EPS)
         dist_res = (result["feat_ob_res_level"] - result["close"]) / (result["close"] + EPS)
 
-        result["feat_ob_supp_dist"] = np.where(mask_swg_supp, dist_supp, self.missing_fill)
-        result["feat_ob_res_dist"] = np.where(mask_swg_res, dist_res, self.missing_fill)
+        result["feat_ob_supp_dist"] = np.where(mask_swg_supp, dist_supp, self.missing_fill).astype(np.float64)
+        result["feat_ob_res_dist"] = np.where(mask_swg_res, dist_res, self.missing_fill).astype(np.float64)
 
         # Return ONLY the new features to avoid column duplication in FeatureEngineer
         new_cols = [
