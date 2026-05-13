@@ -42,7 +42,7 @@ if _TALIB_AVAILABLE:
                 _FUNC_REGISTRY.append((_f_name, _group, True, 1))
                 continue
             
-            # Others: determine output count via a known list of multi-output functions
+            # Multi-output function mapping
             _multi = {
                 "BBANDS": 3, "MACD": 3, "MACDEXT": 3, "MACDFIX": 3, 
                 "STOCH": 2, "STOCHF": 2, "STOCHRSI": 2, "MAMA": 2, "AROON": 2,
@@ -63,14 +63,27 @@ if _TALIB_AVAILABLE:
             
             _FUNC_REGISTRY.append((_f_name, _group, False, _count))
 
-def _safe(arr: np.ndarray) -> np.ndarray:
-    """Cast to float64 and replace inf with nan. Ensures 1D."""
-    if arr is None: return np.array([])
+def _safe(arr, expected_len: int = None) -> np.ndarray:
+    """Cast to float64 and replace inf with nan. Ensures 1D of correct length."""
+    if arr is None: return np.array([], dtype=np.float64)
     out = np.array(arr, dtype=np.float64)
+    
+    # If it's multi-dimensional, try to find a 1D slice that matches expected_len
     if out.ndim > 1:
-        # Some multi-output funcs might return 2D if not handled, flatten or take first
-        # But we should handle them in the loop
-        out = out.flatten()
+        if expected_len is not None:
+            # Check if any dimension matches
+            for axis in range(out.ndim):
+                if out.shape[axis] == expected_len:
+                    # Take first slice along other dimensions
+                    if axis == 0: out = out[0]
+                    else: out = out[:, 0] # simplistic
+                    break
+            else:
+                # No match, take first anyway but it might still fail length check
+                out = out.reshape(-1)[:expected_len]
+        else:
+            out = out.flatten()
+            
     out[~np.isfinite(out)] = np.nan
     return out
 
@@ -81,11 +94,13 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     if not _TALIB_AVAILABLE:
         return pd.DataFrame(index=df_raw.index)
 
-    o = _safe(df_raw["open"].values)
-    h = _safe(df_raw["high"].values)
-    l = _safe(df_raw["low"].values)
-    c = _safe(df_raw["close"].values)
+    # Standardize inputs
+    o = np.array(df_raw["open"].values, dtype=np.float64)
+    h = np.array(df_raw["high"].values, dtype=np.float64)
+    l = np.array(df_raw["low"].values, dtype=np.float64)
+    c = np.array(df_raw["close"].values, dtype=np.float64)
     idx = df_raw.index
+    n_rows = len(c)
 
     # Pre-calculate reference scale (approx volatility) for Tanh normalization
     price_std = np.nanstd(c) + _EPS
@@ -97,11 +112,13 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
             func = getattr(talib, f_name)
             
             if is_candle:
-                outputs = func(o, h, l, c)
-                feats[f"talib_{f_name.lower()}"] = _safe(outputs) / 100.0
+                val = _safe(func(o, h, l, c), n_rows)
+                if len(val) == n_rows:
+                    feats[f"talib_{f_name.lower()}"] = val / 100.0
                 continue
 
             # ── 1. Determine Inputs & Call ──
+            outputs = None
             try:
                 outputs = func(h, l, c)
             except Exception:
@@ -115,31 +132,39 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
 
             # ── 2. Handle Outputs ──
             if count > 1:
-                # Expecting a tuple or 2D array
+                # Tuple of arrays
                 if isinstance(outputs, (list, tuple)):
                     for i in range(count):
                         name = f"talib_{f_name.lower()}_{i}"
                         if i < len(outputs):
-                            val = _safe(outputs[i])
-                            feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
-                        else:
-                            feats[name] = np.full(len(c), np.nan)
+                            val = _safe(outputs[i], n_rows)
+                            if len(val) == n_rows:
+                                feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                # Single 2D array
                 elif isinstance(outputs, np.ndarray) and outputs.ndim == 2:
-                    # Some return (2, N) ndarray
                     for i in range(min(count, outputs.shape[0])):
                         name = f"talib_{f_name.lower()}_{i}"
-                        val = _safe(outputs[i])
-                        feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
-                else:
-                    # Fallback for unexpected single output
-                    feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, _safe(outputs), price_std, group, c)
+                        val = _safe(outputs[i], n_rows)
+                        if len(val) == n_rows:
+                            feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
             else:
-                feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, _safe(outputs), price_std, group, c)
+                # Single output
+                val = _safe(outputs, n_rows)
+                if len(val) == n_rows:
+                    feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, val, price_std, group, c)
                         
         except Exception:
             continue
 
-    return pd.DataFrame(feats, index=idx, dtype=np.float64)
+    # Final length check before DataFrame creation
+    final_feats = {}
+    for k, v in feats.items():
+        if len(v) == n_rows:
+            final_feats[k] = v
+        else:
+            logger.debug("Dropping %s: length mismatch (%d vs %d)", k, len(v), n_rows)
+
+    return pd.DataFrame(final_feats, index=idx, dtype=np.float64)
 
 def _apply_smart_normalization(f_name: str, arr: np.ndarray, price_std: float, group: str, close: np.ndarray) -> np.ndarray:
     # Overlap Studies (Price levels) -> Deviation from close
@@ -149,10 +174,13 @@ def _apply_smart_normalization(f_name: str, arr: np.ndarray, price_std: float, g
     # Bounded Oscillators [0, 100] -> [-1, 1]
     if any(x in f_name for x in ["RSI", "MFI", "ADX", "STOCH", "WILLR", "AROON", "ULTOSC", "CCI"]):
         # Safe check for range
-        amin, amax = np.nanmin(arr), np.nanmax(arr)
-        if amin < -50: # Likely -100 to 0
-            return (arr + 50) / 50.0
-        return (arr - 50) / 50.0
+        try:
+            amin = np.nanmin(arr)
+            if amin < -50: # Likely -100 to 0
+                return (arr + 50) / 50.0
+            return (arr - 50) / 50.0
+        except Exception:
+            return arr # Fallback
 
     if "NATR" in f_name or "ROC" in f_name:
         return np.tanh(arr / 5.0)
