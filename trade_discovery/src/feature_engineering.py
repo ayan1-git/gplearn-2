@@ -34,6 +34,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
+from collections import deque
 from typing import Optional, Tuple
 
 import numpy as np
@@ -61,6 +62,7 @@ logging.basicConfig(
 )
 
 _EPS = 1e-10  # guard against zero-division throughout
+EPS = 1e-10
 
 
 # ── DELETED: Global inference-mode state ──────────────────────────────────────
@@ -169,6 +171,19 @@ class FeatureConfig:
     session_close: str = "15:30"
     session_tz: str = "Asia/Kolkata"
     add_session_features: bool = True
+
+    # ── Optimized Order Block Engine fields ──────────────────────────────────
+    ob_internal_lookback: int = 5
+    ob_swing_lookback: int = 20
+    ob_atr_multiplier: float = 0.5
+    ob_max_obs: int = 10
+    ob_iou_threshold: float = 0.85
+    ob_missing_value_fill: float = 5.0
+
+    # ── Ichimoku Cloud fields ────────────────────────────────────────────────
+    ichimoku_tenkan: int = 9
+    ichimoku_kijun: int = 26
+    ichimoku_senkou: int = 52
 
     def __post_init__(self) -> None:
         if self.ewma_span < 1:
@@ -962,6 +977,389 @@ def vol_squeeze_ratio(
     return squeeze
 
 
+def price_rejection_features(
+    open_s: pd.Series,
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+) -> pd.DataFrame:
+    """
+    Relative wick lengths (rejection).
+
+    Formula
+    -------
+        HL = High - Low
+        Upper = (High - max(Open, Close)) / (HL + ε)
+        Lower = (min(Open, Close) - Low) / (HL + ε)
+
+    Interpretation
+    --------------
+        Higher values → strong rejection of that price level (wick presence).
+    """
+    hl_range = high - low
+    upper = (high - np.maximum(open_s, close)) / (hl_range + _EPS)
+    lower = (np.minimum(open_s, close) - low) / (hl_range + _EPS)
+
+    return pd.DataFrame({
+        "feat_rejection_upper": upper.clip(0.0, 1.0),
+        "feat_rejection_lower": lower.clip(0.0, 1.0),
+    }, index=open_s.index)
+
+
+def calculate_ichimoku_distances(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    tenkan_period: int = 9,
+    kijun_period: int = 26,
+    senkou_b_period: int = 52,
+) -> pd.DataFrame:
+    """
+    Calculates relative distance to Ichimoku Cloud components.
+
+    Returns as percentage distances from close (unbounded).
+    """
+    # Tenkan-sen (Conversion Line)
+    tenkan = (
+        high.rolling(tenkan_period, min_periods=tenkan_period).max() +
+        low.rolling(tenkan_period, min_periods=tenkan_period).min()
+    ) / 2.0
+
+    # Kijun-sen (Base Line)
+    kijun = (
+        high.rolling(kijun_period, min_periods=kijun_period).max() +
+        low.rolling(kijun_period, min_periods=kijun_period).min()
+    ) / 2.0
+
+    # Senkou Spans (Cloud) - Calculated historically
+    span_a_raw = (tenkan + kijun) / 2.0
+    span_b_raw = (
+        high.rolling(senkou_b_period, min_periods=senkou_b_period).max() +
+        low.rolling(senkou_b_period, min_periods=senkou_b_period).min()
+    ) / 2.0
+
+    # Shift forward by kijun_period (standard 26) so today's row uses the cloud
+    # projected from the past.
+    span_a = span_a_raw.shift(kijun_period)
+    span_b = span_b_raw.shift(kijun_period)
+
+    # Return as percentage distances from close (Unbounded, stationary)
+    return pd.DataFrame({
+        "feat_ichimoku_dist_tenkan": (close - tenkan) / (close + _EPS),
+        "feat_ichimoku_dist_kijun":  (close - kijun) / (close + _EPS),
+        "feat_ichimoku_dist_span_a": (close - span_a) / (close + _EPS),
+        "feat_ichimoku_dist_span_b": (close - span_b) / (close + _EPS),
+    }, index=close.index)
+
+
+
+class OptimizedOrderBlockEngine:
+    """
+    Policy:
+    - Zone touch is wick-based.
+    - Zone invalidation is close-through-based.
+    - Pivot confirmation occurs only after the full left/right lookback window exists.
+    """
+
+    def __init__(
+        self,
+        internal_lookback: int = 5,
+        swing_lookback: int = 20,
+        atr_multiplier: float = 0.5,
+        max_obs: int = 5,
+        iou_threshold: float = 0.85,
+        missing_value_fill: float = 5.0,
+    ):
+        if internal_lookback < 1 or swing_lookback < 1:
+            raise ValueError("Lookbacks must be >= 1")
+        if internal_lookback >= swing_lookback:
+            raise ValueError("internal_lookback must be < swing_lookback")
+        if atr_multiplier <= 0:
+            raise ValueError("atr_multiplier must be > 0")
+        if max_obs < 1:
+            raise ValueError("max_obs must be >= 1")
+        if not 0.0 <= iou_threshold <= 1.0:
+            raise ValueError("iou_threshold must be in [0, 1]")
+
+        self.int_lb = int(internal_lookback)
+        self.swg_lb = int(swing_lookback)
+        self.atr_mult = float(atr_multiplier)
+        self.max_obs = int(max_obs)
+        self.iou_threshold = float(iou_threshold)
+        self.missing_fill = float(missing_value_fill)
+        self.max_window = (self.swg_lb * 2) + 1
+
+    def get_pivot_flags(self, series: pd.Series, lookback: int, is_high: bool) -> np.ndarray:
+        """
+        Return detection-time flags.
+
+        If a pivot occurs at origin index j, the flag is emitted at j + lookback,
+        which preserves the original engine's confirmation lag behavior.
+        """
+        if lookback < 1:
+            raise ValueError("lookback must be >= 1")
+
+        values = np.asarray(series.to_numpy(dtype=np.float64))
+        n = len(values)
+        flags = np.zeros(n, dtype=bool)
+
+        if n < (2 * lookback + 1):
+            return flags
+
+        for origin_idx in range(lookback, n - lookback):
+            candidate = values[origin_idx]
+            if not np.isfinite(candidate):
+                continue
+
+            window = values[origin_idx - lookback: origin_idx + lookback + 1]
+            if not np.isfinite(window).all():
+                continue
+
+            if is_high:
+                extreme = np.max(window)
+                is_strict_pivot = (candidate == extreme) and (np.sum(window == extreme) == 1)
+            else:
+                extreme = np.min(window)
+                is_strict_pivot = (candidate == extreme) and (np.sum(window == extreme) == 1)
+
+            if is_strict_pivot:
+                detect_idx = origin_idx + lookback
+                if detect_idx < n:
+                    flags[detect_idx] = True
+
+        return flags
+
+    @staticmethod
+    def iou_1d(bot_a: float, top_a: float, bot_b: float, top_b: float) -> float:
+        intersect_top = min(top_a, top_b)
+        intersect_bot = max(bot_a, bot_b)
+        if intersect_top <= intersect_bot:
+            return 0.0
+        return (intersect_top - intersect_bot) / (max(top_a, top_b) - min(bot_a, bot_b))
+
+    def is_duplicate_spatial(self, new_ob: dict, queue: deque) -> bool:
+        return any(
+            self.iou_1d(new_ob["bot"], new_ob["top"], ob["bot"], ob["top"]) > self.iou_threshold
+            for ob in queue
+        )
+
+    @staticmethod
+    def _zone_touched(ob: dict, curr_h: float, curr_l: float) -> bool:
+        return curr_l <= ob["top"] and curr_h >= ob["bot"]
+
+    @staticmethod
+    def _zone_invalidated(ob: dict, curr_c: float, is_bull: bool) -> bool:
+        if is_bull:
+            return curr_c < ob["bot"]
+        return curr_c > ob["top"]
+
+    def create_ob(
+        self,
+        origin_idx: int,
+        current_idx: int,
+        is_high: bool,
+        highs: np.ndarray,
+        lows: np.ndarray,
+        closes: np.ndarray,
+        atrs: np.ndarray,
+    ):
+        atr_val = atrs[origin_idx]
+        if not np.isfinite(atr_val) or atr_val <= 0.0:
+            return None
+
+        atr_val *= self.atr_mult
+        base = highs[origin_idx] if is_high else lows[origin_idx]
+        if not np.isfinite(base):
+            return None
+
+        top, bot = (base, base - atr_val) if is_high else (base + atr_val, base)
+        if bot > top:
+            top, bot = bot, top
+
+        phantom_closes = closes[origin_idx + 1:current_idx]
+        phantom_highs = highs[origin_idx + 1:current_idx]
+        phantom_lows = lows[origin_idx + 1:current_idx]
+
+        if phantom_closes.size > 0:
+            if is_high and np.any(phantom_closes > top):
+                return None
+            if (not is_high) and np.any(phantom_closes < bot):
+                return None
+
+        touches = (
+            int(np.sum((phantom_lows <= top) & (phantom_highs >= bot)))
+            if phantom_closes.size > 0
+            else 0
+        )
+
+        return {
+            "idx": origin_idx,
+            "top": float(top),
+            "bot": float(bot),
+            "touches": int(touches),
+        }
+
+    def promote_or_create(
+        self,
+        origin_idx: int,
+        current_idx: int,
+        is_high: bool,
+        internal_q: deque,
+        swing_q: deque,
+        highs: np.ndarray,
+        lows: np.ndarray,
+        closes: np.ndarray,
+        atrs: np.ndarray,
+    ) -> None:
+        promoted_ob = next((ob for ob in internal_q if ob["idx"] == origin_idx), None)
+        if promoted_ob is not None:
+            if not self.is_duplicate_spatial(promoted_ob, swing_q):
+                internal_q.remove(promoted_ob)
+                swing_q.append(promoted_ob)
+            return
+
+        new_ob = self.create_ob(origin_idx, current_idx, is_high, highs, lows, closes, atrs)
+        if new_ob is not None and not self.is_duplicate_spatial(new_ob, swing_q):
+            swing_q.append(new_ob)
+
+    def _update_touch_counts(self, queue: deque, curr_h: float, curr_l: float) -> None:
+        for ob in queue:
+            if self._zone_touched(ob, curr_h, curr_l):
+                ob["touches"] += 1
+
+    def _evict_invalidated(self, queue: deque, curr_c: float, is_bull: bool) -> None:
+        to_evict = [ob for ob in queue if self._zone_invalidated(ob, curr_c, is_bull)]
+        for ob in to_evict:
+            queue.remove(ob)
+
+    def generate_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        result = df.copy()
+        n = len(result)
+
+        highs = np.ascontiguousarray(result["high"].to_numpy(), dtype=np.float64)
+        lows = np.ascontiguousarray(result["low"].to_numpy(), dtype=np.float64)
+        closes = np.ascontiguousarray(result["close"].to_numpy(), dtype=np.float64)
+        atrs = np.ascontiguousarray(result["ATR"].to_numpy(), dtype=np.float64)
+
+        int_ph = self.get_pivot_flags(result["high"], self.int_lb, True)
+        int_pl = self.get_pivot_flags(result["low"], self.int_lb, False)
+        swg_ph = self.get_pivot_flags(result["high"], self.swg_lb, True)
+        swg_pl = self.get_pivot_flags(result["low"], self.swg_lb, False)
+
+        swg_bull, swg_bear, int_bull, int_bear = [deque(maxlen=self.max_obs) for _ in range(4)]
+
+        out_swg_supp = np.full(n, np.nan, dtype=np.float64)
+        out_swg_res = np.full(n, np.nan, dtype=np.float64)
+        out_int_supp = np.full(n, np.nan, dtype=np.float64)
+        out_int_res = np.full(n, np.nan, dtype=np.float64)
+        out_swg_supp_touches = np.zeros(n, dtype=np.float32)
+        out_swg_res_touches = np.zeros(n, dtype=np.float32)
+        mask_swg_supp = np.zeros(n, dtype=bool)
+        mask_swg_res = np.zeros(n, dtype=bool)
+
+        for i in range(self.max_window, n):
+            curr_h = highs[i]
+            curr_l = lows[i]
+            curr_c = closes[i]
+
+            if not (np.isfinite(curr_h) and np.isfinite(curr_l) and np.isfinite(curr_c)):
+                continue
+
+            if swg_ph[i]:
+                self.promote_or_create(
+                    i - self.swg_lb,
+                    i,
+                    True,
+                    int_bear,
+                    swg_bear,
+                    highs,
+                    lows,
+                    closes,
+                    atrs,
+                )
+
+            if swg_pl[i]:
+                self.promote_or_create(
+                    i - self.swg_lb,
+                    i,
+                    False,
+                    int_bull,
+                    swg_bull,
+                    highs,
+                    lows,
+                    closes,
+                    atrs,
+                )
+
+            if int_ph[i]:
+                new_ob = self.create_ob(i - self.int_lb, i, True, highs, lows, closes, atrs)
+                if (
+                    new_ob is not None
+                    and not self.is_duplicate_spatial(new_ob, swg_bear)
+                    and not self.is_duplicate_spatial(new_ob, int_bear)
+                ):
+                    int_bear.append(new_ob)
+
+            if int_pl[i]:
+                new_ob = self.create_ob(i - self.int_lb, i, False, highs, lows, closes, atrs)
+                if (
+                    new_ob is not None
+                    and not self.is_duplicate_spatial(new_ob, swg_bull)
+                    and not self.is_duplicate_spatial(new_ob, int_bull)
+                ):
+                    int_bull.append(new_ob)
+
+            self._update_touch_counts(swg_bull, curr_h, curr_l)
+            self._update_touch_counts(int_bull, curr_h, curr_l)
+            self._update_touch_counts(swg_bear, curr_h, curr_l)
+            self._update_touch_counts(int_bear, curr_h, curr_l)
+
+            self._evict_invalidated(swg_bull, curr_c, is_bull=True)
+            self._evict_invalidated(int_bull, curr_c, is_bull=True)
+            self._evict_invalidated(swg_bear, curr_c, is_bull=False)
+            self._evict_invalidated(int_bear, curr_c, is_bull=False)
+
+            if swg_bull:
+                closest = max(swg_bull, key=lambda x: x["top"])
+                out_swg_supp[i] = closest["top"]
+                out_swg_supp_touches[i] = closest["touches"]
+                mask_swg_supp[i] = True
+
+            if swg_bear:
+                closest = min(swg_bear, key=lambda x: x["bot"])
+                out_swg_res[i] = closest["bot"]
+                out_swg_res_touches[i] = closest["touches"]
+                mask_swg_res[i] = True
+
+            if int_bull:
+                out_int_supp[i] = max(int_bull, key=lambda x: x["top"])["top"]
+
+            if int_bear:
+                out_int_res[i] = min(int_bear, key=lambda x: x["bot"])["bot"]
+
+        result["feat_ob_supp_level"] = out_swg_supp
+        result["feat_ob_supp_touches"] = out_swg_supp_touches
+        result["feat_ob_supp_mask"] = mask_swg_supp.astype(np.int8)
+
+        result["feat_ob_res_level"] = out_swg_res
+        result["feat_ob_res_touches"] = out_swg_res_touches
+        result["feat_ob_res_mask"] = mask_swg_res.astype(np.int8)
+
+        dist_supp = (result["close"] - result["feat_ob_supp_level"]) / (result["close"] + EPS)
+        dist_res = (result["feat_ob_res_level"] - result["close"]) / (result["close"] + EPS)
+
+        result["feat_ob_supp_dist"] = np.where(mask_swg_supp, dist_supp, self.missing_fill)
+        result["feat_ob_res_dist"] = np.where(mask_swg_res, dist_res, self.missing_fill)
+
+        # Return ONLY the new features to avoid column duplication in FeatureEngineer
+        new_cols = [
+            "feat_ob_supp_level", "feat_ob_supp_touches", "feat_ob_supp_mask",
+            "feat_ob_res_level", "feat_ob_res_touches", "feat_ob_res_mask",
+            "feat_ob_supp_dist", "feat_ob_res_dist"
+        ]
+        return result[new_cols]
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Master Feature Builder
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1172,6 +1570,40 @@ class FeatureEngineer:
                 fast_window=cfg.vol_squeeze_fast,
                 slow_window=cfg.vol_squeeze_slow,
             ))
+
+            # 14. Price Rejection (Wicks)
+            parts.append(price_rejection_features(ohlc["open"], h, l, c))
+
+            # 15. Ichimoku Cloud Distances
+            parts.append(calculate_ichimoku_distances(
+                h, l, c,
+                tenkan_period=cfg.ichimoku_tenkan,
+                kijun_period=cfg.ichimoku_kijun,
+                senkou_b_period=cfg.ichimoku_senkou,
+            ))
+
+            # 16. Optimized Order Blocks
+            # Compute ATR for the engine
+            tr = pd.concat([
+                h - l,
+                (h - c.shift(1)).abs(),
+                (l - c.shift(1)).abs(),
+            ], axis=1).max(axis=1)
+            atr_val = tr.rolling(cfg.atr_period).mean()
+            
+            ohlc_with_atr = ohlc.copy()
+            ohlc_with_atr["ATR"] = atr_val
+            
+            ob_engine = OptimizedOrderBlockEngine(
+                internal_lookback=cfg.ob_internal_lookback,
+                swing_lookback=cfg.ob_swing_lookback,
+                atr_multiplier=cfg.ob_atr_multiplier,
+                max_obs=cfg.ob_max_obs,
+                iou_threshold=cfg.ob_iou_threshold,
+                missing_value_fill=cfg.ob_missing_value_fill,
+            )
+            ob_feats = ob_engine.generate_features(ohlc_with_atr)
+            parts.append(ob_feats)
 
         # ── 5. Target (training only) ─────────────────────────────────────────
         if include_target:
@@ -1437,11 +1869,19 @@ PASSTHROUGH_FEATURES = [
     "feat_local_structure",
     "feat_session_sin",
     "feat_session_cos",
+    "feat_ob_supp_touches",
+    "feat_ob_res_touches",
+    "feat_rejection_upper",
+    "feat_rejection_lower",
 ]
 
 SCALE_FEATURES = [
     f"vs_factor_span{_bucket_cfg.ewma_span}",
     "feat_vol_squeeze",
+    "feat_ichimoku_dist_tenkan",
+    "feat_ichimoku_dist_kijun",
+    "feat_ichimoku_dist_span_a",
+    "feat_ichimoku_dist_span_b",
 ]
 
 if _TALIB_FEATURES_AVAILABLE:
