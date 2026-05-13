@@ -1001,8 +1001,8 @@ def price_rejection_features(
     lower = (np.minimum(open_s, close) - low) / (hl_range + _EPS)
 
     return pd.DataFrame({
-        "feat_rejection_upper": upper.clip(0.0, 1.0),
-        "feat_rejection_lower": lower.clip(0.0, 1.0),
+        "feat_rejection_upper": upper.clip(0.0, 1.0).astype(np.float64),
+        "feat_rejection_lower": lower.clip(0.0, 1.0).astype(np.float64),
     }, index=open_s.index)
 
 
@@ -1045,10 +1045,10 @@ def calculate_ichimoku_distances(
 
     # Return as percentage distances from close (Unbounded, stationary)
     return pd.DataFrame({
-        "feat_ichimoku_dist_tenkan": (close - tenkan) / (close + _EPS),
-        "feat_ichimoku_dist_kijun":  (close - kijun) / (close + _EPS),
-        "feat_ichimoku_dist_span_a": (close - span_a) / (close + _EPS),
-        "feat_ichimoku_dist_span_b": (close - span_b) / (close + _EPS),
+        "feat_ichimoku_dist_tenkan": ((close - tenkan) / (close + _EPS)).astype(np.float64),
+        "feat_ichimoku_dist_kijun":  ((close - kijun) / (close + _EPS)).astype(np.float64),
+        "feat_ichimoku_dist_span_a": ((close - span_a) / (close + _EPS)).astype(np.float64),
+        "feat_ichimoku_dist_span_b": ((close - span_b) / (close + _EPS)).astype(np.float64),
     }, index=close.index)
 
 
