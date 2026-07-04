@@ -110,18 +110,25 @@ def tanh_scale_train_apply_test(
     actual_pass_cols  = [c for c in passthrough_cols if c in X_train.columns]
     EPS = 1e-8
 
-    X_train_scaled = pd.DataFrame(index=X_train.index)
-    X_test_scaled  = pd.DataFrame(index=X_test.index)
+    parts_train = []
+    parts_test = []
 
     if actual_scale_cols:
         train_view    = X_train[actual_scale_cols]
         scale_factors = np.maximum(np.percentile(np.abs(train_view), 75, axis=0), EPS)
-        X_train_scaled[actual_scale_cols] = np.tanh(train_view / scale_factors).astype(np.float32)
-        X_test_scaled[actual_scale_cols]  = np.tanh(X_test[actual_scale_cols] / scale_factors).astype(np.float32)
+        
+        scaled_train_vals = np.tanh(train_view / scale_factors).astype(np.float32)
+        scaled_test_vals  = np.tanh(X_test[actual_scale_cols] / scale_factors).astype(np.float32)
+        
+        parts_train.append(pd.DataFrame(scaled_train_vals, index=X_train.index, columns=actual_scale_cols))
+        parts_test.append(pd.DataFrame(scaled_test_vals, index=X_test.index, columns=actual_scale_cols))
 
     if actual_pass_cols:
-        X_train_scaled[actual_pass_cols] = X_train[actual_pass_cols].astype(np.float32)
-        X_test_scaled[actual_pass_cols]  = X_test[actual_pass_cols].astype(np.float32)
+        parts_train.append(X_train[actual_pass_cols].astype(np.float32))
+        parts_test.append(X_test[actual_pass_cols].astype(np.float32))
+
+    X_train_scaled = pd.concat(parts_train, axis=1) if parts_train else pd.DataFrame(index=X_train.index)
+    X_test_scaled  = pd.concat(parts_test, axis=1)  if parts_test  else pd.DataFrame(index=X_test.index)
 
     return X_train_scaled[original_columns], X_test_scaled[original_columns]
 
