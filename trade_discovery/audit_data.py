@@ -299,6 +299,24 @@ def main():
             json.dump(summary, f, indent=2)
         all_summaries.append(summary)
 
+        # ── Console audit report (so the findings are visible, not just written) ──
+        print("\n" + "=" * 70)
+        print(f"AUDIT REPORT: {os.path.basename(path)}")
+        print("=" * 70)
+        print(f"  Raw rows              : {ohlc['rows']}")
+        print(f"  Label rows (post-filter): {dist['n']}")
+        print(f"  OHLC violations       : {ohlc['ohlc_violations']}")
+        print(f"  Duplicate timestamps  : {ohlc['duplicated_timestamps']}")
+        print(f"  Non-monotonic ts      : {ohlc['non_monotonic_timestamps']}")
+        print(f"  Target mean / std     : {dist['mean']:.4f} / {dist['std']:.4f}")
+        print(f"  Long / Short / Neutral: {dist['positive_count']} / "
+              f"{dist['negative_count']} / {dist['exact_zero_count']}")
+        print(f"  Event (reason) dist   : {reasons}")
+        leak_str = ", ".join(f"{k}={v}" for k, v in leak.items() if v is not None)
+        print(f"  Leakage surrogates    : {leak_str}")
+        print(f"  Reports written to    : {args.out}")
+        print("=" * 70)
+
     aggregate = {
         'config_snapshot': {
             'DATA_FILE': files,
