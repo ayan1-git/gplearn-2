@@ -2,6 +2,7 @@ import copy
 import hashlib
 import logging
 import numpy as np
+import pandas as pd
 from gplearn.functions import make_function
 from gplearn.fitness import make_fitness
 from gplearn.genetic import SymbolicRegressor
@@ -24,6 +25,9 @@ try:
     POINT_MUTATION   = getattr(config, "GP_POINT_MUTATION", 0.1)
     MAX_SAMPLES      = getattr(config, "GP_MAX_SAMPLES", 0.7)
     GT_SOFT_SCALE    = getattr(config, "GT_SOFT_SCALE", 3.0)
+    ATTR_PENALTY_WEIGHT = getattr(config, "FITNESS_ATTR_PENALTY_WEIGHT", 0.25)
+    POSTHOC_TRADE_EVAL  = getattr(config, "FITNESS_POSTHOC_TRADE_EVAL", True)
+    ANTI_CONVERGENCE_FRACTION = getattr(config, "GEL_ANTI_CONVERGENCE_FRACTION", 0.10)
 except ImportError:
     POPULATION_SIZE = 3000
     SEED_FRACTION   = 0.15
@@ -41,6 +45,8 @@ except ImportError:
     POINT_MUTATION   = 0.1
     MAX_SAMPLES      = 0.7
     GT_SOFT_SCALE    = 3.0
+    ATTR_PENALTY_WEIGHT = 0.25
+    POSTHOC_TRADE_EVAL  = True
 
 assert PHASE1_GENS + PHASE2_GENS + PHASE3_GENS == GENERATIONS, (
     f"Phase gens sum ({PHASE1_GENS}+{PHASE2_GENS}+{PHASE3_GENS}) "
@@ -147,13 +153,18 @@ TRADING_FUNCTIONS = [
 ]
 
 # ---------------------------------------------------------------------------
-# CUSTOM FITNESS METRIC
+# CUSTOM FITNESS METRIC  (Phase-1: barrier-proximity penalty)
 # ---------------------------------------------------------------------------
 
 def _make_fitness_fn(pearson_w: float, direction_w: float):
     """
     Factory: returns a compiled gplearn fitness object with given weights.
     Called once per fold inside train_gp_model() — not at module load.
+
+    Phase-1 improvement: adds an ATR-barrier proximity penalty so that
+    predictions with the *wrong sign* on labeled rows are down-weighted.
+    This prevents formulas that correlate well but consistently trigger
+    the wrong barrier from dominating.
     """
     def _directional_fitness(y, y_pred, w):
         EPS = 1e-8
@@ -176,7 +187,16 @@ def _make_fitness_fn(pearson_w: float, direction_w: float):
         short_cov = n_short_pred / (n_short_true + EPS)
         dir_score = (2 * long_cov * short_cov) / (long_cov + short_cov + EPS)
 
-        return float(pearson_w * pearson_r + direction_w * dir_score)
+        # Barrier-proximity penalty: penalise sign errors on labeled points.
+        # When y=+1 (long TP hit), a negative prediction causes the strategy
+        # to go short and likely hit SL first.  The penalty scales with the
+        # magnitude of the wrong-sign prediction.
+        wrong_long  = np.mean(np.maximum(0.0, -y_pred[long_mask]))   if np.any(long_mask)  else 0.0
+        wrong_short = np.mean(np.maximum(0.0,  y_pred[short_mask]))  if np.any(short_mask) else 0.0
+        barrier_penalty = (wrong_long + wrong_short) / 2.0
+
+        base_score = pearson_w * pearson_r + direction_w * dir_score
+        return float(base_score - ATTR_PENALTY_WEIGHT * barrier_penalty)
 
     return make_fitness(function=_directional_fitness, greater_is_better=True)
 
@@ -297,6 +317,140 @@ def extract_elite_programs(
 
 
 # ---------------------------------------------------------------------------
+# ANTI-CONVERGENCE: RANDOM PROGRAM GENERATOR  (Phase-2)
+# ---------------------------------------------------------------------------
+
+def _create_random_programs(n_features: int, n_programs: int, fold: int) -> list:
+    """
+    Generate fresh random gplearn programs by running a lightweight micro-GP
+    on dummy data.  Used to inject genetic diversity when the elite pool
+    has converged onto a narrow syntactic pattern.
+    """
+    if n_programs <= 0:
+        return []
+
+    temp = SymbolicRegressor(
+        population_size    = n_programs,
+        generations        = 1,
+        tournament_size    = 3,
+        p_crossover        = 0.3,
+        p_subtree_mutation = 0.5,
+        p_hoist_mutation   = 0.1,
+        p_point_mutation   = 0.1,
+        function_set       = TRADING_FUNCTIONS,
+        init_depth         = (INIT_DEPTH_MIN, min(INIT_DEPTH_MAX, 5)),
+        parsimony_coefficient = 0.001,
+        n_jobs             = 1,
+        verbose            = 0,
+        random_state       = fold + 5000,
+    )
+    X_dummy = np.random.randn(50, n_features).astype(np.float32)
+    y_dummy = np.random.randn(50).astype(np.float32)
+    temp.fit(X_dummy, y_dummy)
+
+    programs = []
+    for p in temp._programs[-1]:
+        if p is not None and hasattr(p, 'execute'):
+            programs.append(copy.deepcopy(p))
+            if len(programs) >= n_programs:
+                break
+    return programs
+
+
+# ---------------------------------------------------------------------------
+# POST-HOC TRADE-SIMULATION SELECTION  (Phase-1)
+# ---------------------------------------------------------------------------
+
+def _score_program_trade_fitness(program, X_train_s, df_raw_train,
+                                  entry_pct, exit_pct,
+                                  tp_mult, sl_mult, atr_period):
+    """
+    Evaluate a single GP program on the training set using the same
+    VectorBT pipeline as OOS evaluation.  Returns (sharpe, n_trades).
+    """
+    try:
+        from src.vectorbt_evaluator import evaluate_formula_with_vectorbt
+
+        class _Wrapper:
+            def predict(self_inner, X):
+                return program.execute(X)
+
+        wrapper = _Wrapper()
+        _, stats, meta = evaluate_formula_with_vectorbt(
+            wrapper,
+            X_train_s,
+            df_raw_train,
+            long_pct_level=entry_pct,
+            short_pct_level=exit_pct,
+            tp_mult=tp_mult,
+            sl_mult=sl_mult,
+        )
+        sharpe   = float(stats.get("Sharpe Ratio", 0.0) if isinstance(stats, dict)
+                         else stats.loc["Sharpe Ratio"] if "Sharpe Ratio" in stats.index else 0.0)
+        n_trades = meta['n_long'] + meta['n_short']
+        return sharpe, n_trades
+    except Exception:
+        return -999.0, 0
+
+
+def _select_best_by_trade_fitness(est_gp, X_train_s, df_raw_train, fold,
+                                  entry_pct, exit_pct, tp_mult, sl_mult, atr_period):
+    """
+    Post-hoc selection: from the top-N programs in the final GP generation,
+    find the one with the best trade-simulation Sharpe on the train set.
+    Replaces est_gp._program in-place if a better trade-Sharpe candidate
+    is found.  Returns True if replacement occurred.
+    """
+    if not hasattr(est_gp, '_programs') or not est_gp._programs:
+        return False
+
+    last_gen = est_gp._programs[-1]
+    candidates = [
+        p for p in last_gen
+        if p is not None and hasattr(p, 'execute')
+    ]
+    if not candidates:
+        return False
+
+    # Sort by internal fitness descending, keep top 20 to limit eval cost
+    candidates.sort(
+        key=lambda p: getattr(p, 'fitness_', -999.0),
+        reverse=True
+    )
+    candidates = candidates[:20]
+
+    best_prog   = None
+    best_sharpe = -999.0
+    for prog in candidates:
+        sharpe, n_trades = _score_program_trade_fitness(
+            prog, X_train_s, df_raw_train,
+            entry_pct, exit_pct, tp_mult, sl_mult, atr_period
+        )
+        if n_trades >= 30 and sharpe > best_sharpe:
+            best_sharpe = sharpe
+            best_prog   = prog
+
+    if best_prog is not None:
+        current_fitness = getattr(est_gp._program, 'fitness_', -999.0)
+        logger.info(
+            "[Fold %d] Post-hoc trade-Sharpe selection: replaced internal best "
+            "(fitness=%.4f) with trade-Sharpe=%.4f program",
+            fold, current_fitness, best_sharpe
+        )
+        est_gp._program = copy.deepcopy(best_prog)
+        # Also update the slot in _programs[-1] for consistency
+        for i, p in enumerate(last_gen):
+            if p is est_gp._program or (
+                hasattr(p, 'execute') and str(p) == str(best_prog)
+            ):
+                last_gen[i] = est_gp._program
+                break
+        return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
 # FIX-GP-1: FEATURE PROBA SURVIVAL HELPER
 # ---------------------------------------------------------------------------
 
@@ -346,6 +500,7 @@ def train_gp_model(
     fold: int = 0,
     feature_proba: np.ndarray = None,
     regime: str = None,                      # FIX-GP-2: new parameter
+    df_raw_train=None,                        # Phase-1: for post-hoc trade fitness
 ) -> SymbolicRegressor:
     """
     Train a SymbolicRegressor with optional cross-fold warm-starting.
@@ -358,13 +513,20 @@ def train_gp_model(
     fold          : int — current fold index (used as random_state)
     feature_proba : np.ndarray | None — Dirichlet-smoothed feature prior
     regime        : str | None — label from classify_regime(), selects HP profile
+    df_raw_train  : pd.DataFrame | None — raw OHLC data for trade-simulation
+                     fitness (Phase-1 improvement)
 
-    Injection Strategy (unchanged)
-    ------------------
-    Step A — Phase 1 bootstrap allocates _programs structure.
-    Step B — Overwrite weakest n_seeds slots with elite seeds.
-    Step C — Phase 2 + 3 resume with warm_start=True.
-    FIX-GP-1: _apply_feature_proba() called before EACH fit().
+    Phase-1 additions
+    -----------------
+    - Barrier-proximity penalty in fitness function.
+    - Post-hoc trade-simulation selection: after GP finishes, the best program
+      by internal fitness may be replaced with the one having the highest
+      train-set VectorBT Sharpe.
+
+    Phase-2 additions
+    -----------------
+    - Anti-convergence: 10% of seeded slots are replaced with fresh random
+      programs generated by a micro-GP.
     """
     logger.info("[Fold %d] Initialising GP Engine | regime=%s ...", fold, regime)
     feature_names = list(X_train.columns)
@@ -399,7 +561,7 @@ def train_gp_model(
             hp = dict(hp)  # shallow copy to avoid mutating the global registry
             hp["p_crossover"] = float(f"{hp['p_crossover'] * scale:.4f}")
             subtree_mut       = float(f"{subtree_mut * scale:.4f}")
-            logger.info("[Fold %d] Probabilities normalized (scale: %.4f) | Sum: %.4f", 
+            logger.info("[Fold %d] Probabilities normalized (scale: %.4f) | Sum: %.4f",
                         fold, scale, hp["p_crossover"] + subtree_mut + fixed_p)
 
     logger.info(
@@ -429,6 +591,12 @@ def train_gp_model(
         random_state         = fold,
     )
 
+    # Phase-2: prepare anti-convergence random programs *once* per GP run
+    anti_conv_programs = []
+    if seed_programs and ANTI_CONVERGENCE_FRACTION > 0:
+        n_random = max(1, int(ANTI_CONVERGENCE_FRACTION * POPULATION_SIZE))
+        anti_conv_programs = _create_random_programs(n_features, n_random, fold)
+
     if seed_programs:
         logger.info("[Fold %d] Starting 3-Phase Seeded Run...", fold)
 
@@ -444,27 +612,50 @@ def train_gp_model(
         n_seeds  = min(len(seed_programs), int(SEED_FRACTION * POPULATION_SIZE))
         last_gen = est_gp._programs[-1]
         rng      = np.random.RandomState(fold + 1000)
-        logger.info("[Fold %d] Injecting %d seeds into Gen %d population.",
-                    fold, n_seeds, PHASE1_GENS - 1)
+        logger.info("[Fold %d] Injecting %d seeds (+%d anti-conv) into Gen %d population.",
+                    fold, n_seeds, len(anti_conv_programs), PHASE1_GENS - 1)
 
         valid_pop   = [(i, p) for i, p in enumerate(last_gen)
                        if p is not None and hasattr(p, 'fitness_')]
         worst_slots = sorted(valid_pop, key=lambda t: t[1].fitness_)[:n_seeds]
+        n_total_slots = min(n_seeds, len(worst_slots))
 
-        for slot_rank, (pop_idx, _) in enumerate(worst_slots):
-            seed = copy.deepcopy(seed_programs[slot_rank % len(seed_programs)])
+        # Phase-2: intersperse anti-convergence random programs among seeds.
+        # FIX: distribute random programs into the true worst-fitness slots,
+        # so seed programs always occupy the best-fitness half of worst_slots.
+        n_anti_intended = max(1, int(ANTI_CONVERGENCE_FRACTION * SEED_FRACTION * POPULATION_SIZE))
+        n_random_slots  = min(len(anti_conv_programs), n_anti_intended, n_total_slots)
+        seed_slot_count = n_total_slots - n_random_slots
+        seed_idx   = 0
+        random_idx = 0
+        n_rand_placed   = 0
+
+        for slot_rank, (pop_idx, _) in enumerate(worst_slots[:n_total_slots]):
+            if slot_rank < seed_slot_count:
+                seed = copy.deepcopy(seed_programs[seed_idx % len(seed_programs)])
+                seed_idx += 1
+            else:
+                seed = copy.deepcopy(anti_conv_programs[random_idx])
+                random_idx += 1
+                n_rand_placed += 1
+                if hasattr(seed, 'program'):
+                    seed.n_features = n_features
+                    for i in range(len(seed.program)):
+                        if isinstance(seed.program[i], (int, np.integer)):
+                            if seed.program[i] >= n_features:
+                                seed.program[i] = rng.randint(0, n_features)
+                    if len(seed.program) > 2:
+                        n_mutate = max(1, int(MUTATION_BOOST * len(seed.program)))
+                        for _ in range(n_mutate):
+                            idx = rng.randint(0, len(seed.program))
+                            if isinstance(seed.program[idx], (int, np.integer)):
+                                seed.program[idx] = rng.randint(0, n_features)
             if hasattr(seed, 'program'):
                 seed.n_features = n_features
                 for i in range(len(seed.program)):
                     if isinstance(seed.program[i], (int, np.integer)):
                         if seed.program[i] >= n_features:
                             seed.program[i] = rng.randint(0, n_features)
-                if len(seed.program) > 2:
-                    n_mutate = max(1, int(MUTATION_BOOST * len(seed.program)))
-                    for _ in range(n_mutate):
-                        idx = rng.randint(0, len(seed.program))
-                        if isinstance(seed.program[idx], (int, np.integer)):
-                            seed.program[idx] = rng.randint(0, n_features)
             last_gen[pop_idx] = seed
 
         n_corrupted = 0
@@ -539,6 +730,21 @@ def train_gp_model(
         logger.warning("[Fold %d] Formula length %d > MAX=%d — rejecting.",
                        fold, best_len, config.MAX_PROGRAM_LENGTH)
         return None
+
+    # Phase-1: Post-hoc trade-simulation selection on train set
+    if POSTHOC_TRADE_EVAL and df_raw_train is not None:
+        try:
+            tp_mult  = getattr(config, "TP_ATR_MULT", 2.4)
+            sl_mult  = getattr(config, "SL_ATR_MULT", 1.9)
+            atr_period = getattr(config, "ATR_PERIOD", 20)
+            _select_best_by_trade_fitness(
+                est_gp, X_train, df_raw_train, fold,
+                getattr(config, "ENTRY_PCT", 85),
+                getattr(config, "EXIT_PCT", 15),
+                tp_mult, sl_mult, atr_period,
+            )
+        except Exception as exc:
+            logger.warning("[Fold %d] Post-hoc trade fitness selection failed: %s", fold, exc)
 
     best = str(est_gp._program)
     logger.info("[Fold %d] Best formula: %s", fold, best)

@@ -91,6 +91,7 @@ def evaluate_formula_with_vectorbt(
     absolute_edge_floor: float = DEFAULT_ABSOLUTE_EDGE_FLOOR,
     tp_mult: float = DEFAULT_TP_MULT,
     sl_mult: float = DEFAULT_SL_MULT,
+    atr_period: int = 20,
 ):
     """
     Evaluate GP formula out-of-sample using next-open execution with fixed
@@ -145,7 +146,7 @@ def evaluate_formula_with_vectorbt(
         f"Total: {coverage_raw:.1f}% | TP/SL: {tp_mult}/{sl_mult}"
     )
 
-    atr_series = _compute_wilder_atr(df_raw_oos, period=14).reindex(df_features_oos.index)
+    atr_series = _compute_wilder_atr(df_raw_oos, period=atr_period).reindex(df_features_oos.index)
 
     close_prices = df_raw_oos["close"].astype(np.float32)
     open_prices = df_raw_oos["open"].astype(np.float32)

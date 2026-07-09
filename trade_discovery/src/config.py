@@ -38,7 +38,7 @@ GP_SEED_FRACTION   = 0.20
 GP_MUTATION_BOOST  = 0.15
 GP_HOIST_MUTATION  = 0.1
 GP_POINT_MUTATION  = 0.1
-GP_MAX_SAMPLES     = 0.7
+GP_MAX_SAMPLES     = 0.9   # P2: more data per program → less bagging overfit
 GP_FEATURE_PRIOR_ALPHA = 5.0   # Dirichlet smoothing strength
 
 GEL_HOLDOUT_FRACTION   = 0.20
@@ -48,10 +48,11 @@ GEL_ELITE_POOL_SIZE    = 100
 GEL_MIN_HOLDOUT_TRADES = 30
 
 # ── DIVERSITY ENFORCEMENT ─────────────────────────────────────────────────
-GEL_STALE_RESET_GENS      = 3      # cold-restart elite pool if best unchanged N gens
+GEL_STALE_RESET_GENS      = 2      # cold-restart elite pool if best unchanged N gens
 GEL_MAX_SEED_DUPLICATES   = 2      # max copies of same formula string in elite pool
-GEL_DIVERSITY_FRACTION    = 0.30   # fraction of elite pool reserved for diverse programs
-GEL_FEATURE_PRIOR_DECAY   = 0.7    # exponential decay on feat_win_counts each gen
+GEL_DIVERSITY_FRACTION    = 0.50   # fraction of elite pool reserved for diverse programs
+GEL_FEATURE_PRIOR_DECAY   = 0.40   # exponential decay on feat_win_counts each gen
+GEL_FEATURE_LOSS_PENALTY  = 0.50   # weight applied to feat_loss_counts vs feat_win_counts
 
 # 3-Phase schedule — MUST sum to GP_GENERATIONS
 GP_PHASE1_GENS = 15
@@ -61,21 +62,25 @@ GP_PHASE3_GENS = 20
 # ── GP FITNESS ────────────────────────────────────────────────────────────
 FITNESS_PEARSON_WEIGHT   = 0.70
 FITNESS_DIRECTION_WEIGHT = 0.30
+FITNESS_ATTR_PENALTY_WEIGHT = 0.25   # penalty for wrong-sign predictions
+FITNESS_POSTHOC_TRADE_EVAL  = False  # P2: disable train-only trade-Sharpe selection (overfit)
 
 # ── FORMULA QUALITY GUARDS ────────────────────────────────────────────────
 MIN_FEATURES_IN_FORMULA = 3     # reject formulas using fewer features
-MAX_PROGRAM_LENGTH      = 80    # reject bloated trees
+MAX_PROGRAM_LENGTH      = 40    # P2: hard bloat cap (reject trees > 40 nodes)
 
 # ── SIGNAL QUALITY GUARDS ─────────────────────────────────────────────────
 SIGNAL_UNIQUE_FLOOR = 0.05      # raised from 0.005 → rejects true constants
 
 # ── OOS SURVIVOR THRESHOLDS ───────────────────────────────────────────────
-OOS_MIN_RETURN        = 2.0
-OOS_MIN_SHARPE        = 1.5
-OOS_MAX_DRAWDOWN      = 15.0
-OOS_MAX_DRAWDOWN_HIGH_SHARPE = 28.0   # relaxed gate for Sharpe > 3.5
+OOS_MIN_RETURN        = 1.5
+OOS_MIN_SHARPE        = 1.2
+OOS_MAX_DRAWDOWN      = 25.0
+OOS_MAX_DRAWDOWN_HIGH_SHARPE = 35.0   # relaxed gate for Sharpe > 3.5
 HIGH_SHARPE_THRESHOLD        = 3.5    # above this, apply relaxed DD gate
-MIN_OOS_TRADES               = 20     # reject strategies with insufficient OOS sample
+MIN_OOS_TRADES               = 30     # reject strategies with insufficient OOS sample
+OOS_MIN_PROFIT_FACTOR         = 1.1   # minimum profit factor to survive
+OOS_MIN_COVERAGE_PCT          = 15.0  # minimum executable coverage % to survive
 
 # ── PROBABILISTIC SEED DECAY ──────────────────────────────────────────────
 SEED_SOFT_THRESHOLD_SHARPE = 0.5   # keep seeds if Sharpe ≥ 0.5 × OOS_MIN_SHARPE
@@ -147,11 +152,11 @@ REGIME_HP: dict = {
     },
     # Trending but noisy: balanced
     "trending_random_walk": {
-        "parsimony_p1":   0.0,
-        "parsimony_p2":   0.001,
-        "parsimony_p3":   0.004,
+        "parsimony_p1":   0.001,   # P2: penalise bloat from the start
+        "parsimony_p2":   0.004,   # P2: stronger mid-run complexity pressure
+        "parsimony_p3":   0.010,   # P2: hard length penalty late
         "p_crossover":    0.65,
-        "depth_max":      7,
+        "depth_max":      6,       # P2: cap tree depth (was 7)
         "tournament_size": 10,
     },
     # Fallback / uncertain

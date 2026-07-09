@@ -11,6 +11,7 @@ Architecture:
 This replaces the WFO (walk_forward_optimization) paradigm entirely.
 No other src/ files need changes.
 """
+import copy
 import gc
 import logging
 import os
@@ -47,24 +48,29 @@ MIN_FEATURES        = cfg.MIN_FEATURES_IN_FORMULA
 MAX_PROG_LEN        = cfg.MAX_PROGRAM_LENGTH
 SIGNAL_UNIQUE_FLOOR = cfg.SIGNAL_UNIQUE_FLOOR
 
-OOS_MIN_RETURN   = cfg.OOS_MIN_RETURN
-OOS_MIN_SHARPE   = cfg.OOS_MIN_SHARPE
-OOS_MAX_DRAWDOWN = cfg.OOS_MAX_DRAWDOWN
-MIN_OOS_TRADES   = cfg.MIN_OOS_TRADES
+OOS_MIN_RETURN   = getattr(cfg, 'OOS_MIN_RETURN', 1.5)
+OOS_MIN_SHARPE   = getattr(cfg, 'OOS_MIN_SHARPE', 1.2)
+OOS_MAX_DRAWDOWN = getattr(cfg, 'OOS_MAX_DRAWDOWN', 25.0)
+OOS_MIN_PROFIT_FACTOR = getattr(cfg, 'OOS_MIN_PROFIT_FACTOR', 1.1)
+OOS_MIN_COVERAGE_PCT = getattr(cfg, 'OOS_MIN_COVERAGE_PCT', 15.0)
+MIN_HOLDOUT_TRADES   = getattr(cfg, 'MIN_OOS_TRADES', 30)
 
-# ── GEL-SPECIFIC CONFIG ──────────────────────────────────────────────────────
+# GEL-SPECIFIC CONFIG ──────────────────────────────────────────────────────
 # Add these keys to src/config.py to tune them; defaults are applied below.
 HOLDOUT_FRACTION   = getattr(cfg, 'GEL_HOLDOUT_FRACTION',   0.20)
 GEL_GENERATIONS    = getattr(cfg, 'GEL_GENERATIONS',        50)
 SEEDS_PER_GEN      = getattr(cfg, 'GEL_SEEDS_PER_GEN',      200)
 ELITE_POOL_SIZE    = getattr(cfg, 'GEL_ELITE_POOL_SIZE',    100)
-MIN_HOLDOUT_TRADES = getattr(cfg, 'GEL_MIN_HOLDOUT_TRADES', 30)
 
 # Diversity enforcement
-STALE_RESET_GENS      = getattr(cfg, 'GEL_STALE_RESET_GENS',     3)
+STALE_RESET_GENS      = getattr(cfg, 'GEL_STALE_RESET_GENS',     2)
 MAX_SEED_DUPLICATES   = getattr(cfg, 'GEL_MAX_SEED_DUPLICATES',  2)
-DIVERSITY_FRACTION    = getattr(cfg, 'GEL_DIVERSITY_FRACTION',   0.30)
-FEATURE_PRIOR_DECAY   = getattr(cfg, 'GEL_FEATURE_PRIOR_DECAY',  0.70)
+DIVERSITY_FRACTION    = getattr(cfg, 'GEL_DIVERSITY_FRACTION',   0.50)
+FEATURE_PRIOR_DECAY   = getattr(cfg, 'GEL_FEATURE_PRIOR_DECAY',  0.40)
+FEATURE_LOSS_PENALTY  = getattr(cfg, 'GEL_FEATURE_LOSS_PENALTY', 0.50)
+
+# Phase-2 anti-convergence: inject fresh random programs into seed pool
+ANTI_CONVERGENCE_FRACTION = getattr(cfg, 'GEL_ANTI_CONVERGENCE_FRACTION', 0.10)
 
 # ── IMPORTS ──────────────────────────────────────────────────────────────────
 from src.feature_engineering import (calculate_features,
@@ -96,6 +102,11 @@ def _features_used(formula_str: str) -> tuple:
         f for f in PASSTHROUGH_FEATURES + SCALE_FEATURES
         if f in formula_str
     }))
+
+
+def _count_formula_features(formula_str: str) -> int:
+    """Count distinct features used in a formula string."""
+    return len(_features_used(formula_str))
 
 
 def tanh_scale_train_apply_test(
@@ -263,8 +274,8 @@ def _check_signal_quality(train_signals: np.ndarray, gen: int) -> bool:
     short_cov = float(np.mean(train_signals <= exit_thr))
 
     is_one_sided = (
-        (long_cov > 0.45 and short_cov < 0.05)
-        or (short_cov > 0.45 and long_cov < 0.05)
+        (long_cov > 0.55 and short_cov < 0.03)
+        or (short_cov > 0.55 and long_cov < 0.03)
     )
     is_degenerate = (
         unique_ratio < SIGNAL_UNIQUE_FLOOR
@@ -358,7 +369,7 @@ def _save_winners(winners: List[dict]) -> None:
         for feat, count in Counter(all_feats).most_common():
             f.write(f"  {count:>3}x  {feat}\n")
 
-    pd.DataFrame(winners).drop(columns=['formula'], errors='ignore').to_parquet(
+    pd.DataFrame(winners).drop(columns=['formula', 'program'], errors='ignore').to_parquet(
         "outputs/winning_formulas_gel.parquet", index=False)
 
     logger.info("Winners saved → %s + outputs/winning_formulas_gel.parquet", log_path)
@@ -399,6 +410,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
     winners:       List    = []
     seen_hashes:   set     = set()
     feat_win_counts        = Counter()
+    feat_loss_counts       = Counter()   # Phase-1.5: negative feature feedback
     gen_meta_rows: List    = []
 
     # Stale attractor tracking (anti-collapse)
@@ -414,13 +426,31 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                     ELITE_POOL_SIZE, _stale_count, STALE_RESET_GENS)
         logger.info("━" * 60)
 
-        # Feature prior (Dirichlet-smoothed from winner history)
+        # Feature prior (Dirichlet-smoothed from winner/loser history)
         all_feats  = list(X_train_s.columns)
         alpha      = cfg.GP_FEATURE_PRIOR_ALPHA
-        raw_counts = np.array([feat_win_counts.get(f, 0) for f in all_feats], dtype=float)
+
+        # Balanced feedback: wins add, losses subtract (with penalty weight)
+        net_scores = np.array(
+            [feat_win_counts.get(f, 0) - FEATURE_LOSS_PENALTY * feat_loss_counts.get(f, 0)
+             for f in all_feats],
+            dtype=float,
+        )
+        net_scores = np.maximum(net_scores, 0.0)  # floor at zero
+
         # Exponential decay to prevent positive-feedback lock-in on early winners
-        raw_counts *= FEATURE_PRIOR_DECAY
+        raw_counts = net_scores * FEATURE_PRIOR_DECAY
         feat_proba = (raw_counts + alpha) / (raw_counts + alpha).sum()
+
+        # P3: cap concentration — no single feature may dominate the prior.
+        # Without this the prior locks onto an early winner's features (e.g.
+        # ret_norm_130d) and the search never explores elsewhere. Clip the
+        # max probability to 3x the uniform baseline, then renormalise.
+        uniform_p   = 1.0 / len(all_feats)
+        max_p       = 3.0 * uniform_p
+        feat_proba  = np.minimum(feat_proba, max_p)
+        feat_proba  = feat_proba / feat_proba.sum()
+
         if raw_counts.max() > 0:
             top_feat = all_feats[int(np.argmax(raw_counts))]
             logger.info("[Gen %d] Feature prior — most rewarded: '%s' (decayed=%.1f)",
@@ -439,6 +469,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 fold          = gen,
                 feature_proba = feat_proba,
                 regime        = train_regime,
+                df_raw_train  = df_raw.loc[X_train_s.index],
             )
         except Exception as exc:
             logger.error("[Gen %d] GP training crashed: %s", gen, exc, exc_info=True)
@@ -488,6 +519,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 gp, X_hold_s, raw_hold,
                 ENTRY_PCT, EXIT_PCT,
                 tp_mult=TP_ATR_MULT, sl_mult=SL_ATR_MULT,
+                atr_period=cfg.ATR_PERIOD,
             )
         except Exception as exc:
             logger.error("[Gen %d] Holdout evaluation crashed: %s", gen, exc, exc_info=True)
@@ -528,18 +560,31 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         })
 
         # ── Survivor gate ─────────────────────────────────────────────────────
+        oos_evaluated = False
         if n_trades < MIN_HOLDOUT_TRADES:
             logger.info("[Gen %d] FAIL — trades=%d < min=%d",
                         gen, n_trades, MIN_HOLDOUT_TRADES)
+            oos_evaluated = True
         elif total_ret <= OOS_MIN_RETURN:
             logger.info("[Gen %d] FAIL — return=%.2f%% ≤ floor=%.2f%%",
                         gen, total_ret, OOS_MIN_RETURN)
+            oos_evaluated = True
         elif sharpe <= OOS_MIN_SHARPE:
             logger.info("[Gen %d] FAIL — Sharpe=%.2f ≤ floor=%.2f",
                         gen, sharpe, OOS_MIN_SHARPE)
+            oos_evaluated = True
         elif max_dd >= cfg.OOS_MAX_DRAWDOWN:
             logger.info("[Gen %d] FAIL — DD=%.2f%% ≥ max=%.2f%%",
                         gen, max_dd, cfg.OOS_MAX_DRAWDOWN)
+            oos_evaluated = True
+        elif profit_fac < OOS_MIN_PROFIT_FACTOR:
+            logger.info("[Gen %d] FAIL — PF=%.2f < min=%.2f",
+                        gen, profit_fac, OOS_MIN_PROFIT_FACTOR)
+            oos_evaluated = True
+        elif coverage < OOS_MIN_COVERAGE_PCT:
+            logger.info("[Gen %d] FAIL — Coverage=%.1f%% < min=%.1f%%",
+                        gen, coverage, OOS_MIN_COVERAGE_PCT)
+            oos_evaluated = True
         else:
             # ✓ Passed all gates
             seen_hashes.add(formula_hash)
@@ -553,6 +598,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 'win_rate': win_rate, 'profit_factor': profit_fac, 'n_trades': n_trades,
                 'buy_threshold': buy_thresh, 'sell_threshold': sell_thresh,
                 'coverage_pct': coverage,
+                'program': copy.deepcopy(gp._program),   # P1: retain for OOS-seeded evolution
             })
             gen_meta_rows[-1]['winner'] = True
 
@@ -568,8 +614,8 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                             gen, evicted)
 
             logger.info(
-                "[Gen %d] ✓ WINNER | Return=%.2f%% | Sharpe=%.2f | WR=%.1f%% | "
-                "DD=%.2f%% | PF=%.2f | Leaderboard: %d/%d",
+                "[Gen %d] ✓ WINNER | Return=%.2f%% | Sharpe=%.2f | WR:%.1f%% | "
+                "DD:%.2f%% | PF:%.2f | Leaderboard: %d/%d",
                 gen, total_ret, sharpe, win_rate, max_dd, profit_fac,
                 len(winners), ELITE_POOL_SIZE
             )
@@ -580,16 +626,48 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 logger.info("  #%d Gen%d | Sharpe=%.2f | Ret=%.2f%% | DD=%.2f%%",
                             rank, w['gen'], w['sharpe'], w['return_pct'], w['max_dd'])
 
-        # ── Always extract elite pool ─────────────────────────────────────────
-        # Even a formula that fails OOS contributes useful building blocks.
-        # The population contains 3000 programs; we carry the best 200 forward.
-        elite_pool = extract_elite_programs(
-            gp, top_n=SEEDS_PER_GEN,
-            max_duplicates=MAX_SEED_DUPLICATES,
-            diversity_fraction=DIVERSITY_FRACTION,
-        )
-        logger.info("[Gen %d] Elite pool: %d programs → seeding gen %d.",
-                    gen, len(elite_pool), gen + 1)
+        # ── Negative feedback: learn from OOS failures ─────────────────────────
+        # Phase-1.5 — every OOS-evaluated formula that did NOT become a winner
+        # contributes a "loss" signal for each of its features.  This prevents
+        # the feature prior from only rewarding winners; it also actively
+        # deprioritises features that keep appearing in losing formulas.
+        if oos_evaluated:
+            loser_feats = _features_used(formula_str)
+            for feat in loser_feats:
+                feat_loss_counts[feat] += 1
+            logger.info(
+                "[Gen %d] Loss feedback — %d features penalised for OOS failure",
+                gen, len(loser_feats)
+            )
+
+        # ── Build next-gen seed pool ─────────────────────────────────────────
+        # P1: The holdout must drive evolution. Once we have OOS survivors
+        # (winners), seed the next generation PRIMARILY from them, padding the
+        # remaining slots with in-sample elite for diversity. Before any winner
+        # exists we fall back to the pure in-sample elite (bootstrap behaviour).
+        # This replaces the old design where the seed pool was always the
+        # in-sample-fittest programs, which optimised train fitness and
+        # monotonically overfit (OOB 0.23→0.33 while holdout collapsed).
+        if winners:
+            winner_progs = [copy.deepcopy(w['program']) for w in winners]
+            n_winner = max(1, min(len(winner_progs), SEEDS_PER_GEN // 2))
+            in_sample = extract_elite_programs(
+                gp, top_n=SEEDS_PER_GEN - n_winner,
+                max_duplicates=MAX_SEED_DUPLICATES,
+                diversity_fraction=DIVERSITY_FRACTION,
+            )
+            elite_pool = winner_progs[:n_winner] + in_sample
+            elite_pool = elite_pool[:SEEDS_PER_GEN]
+            logger.info("[Gen %d] Elite pool: %d programs (winners=%d + elite=%d) → gen %d.",
+                        gen, len(elite_pool), n_winner, len(in_sample), gen + 1)
+        else:
+            elite_pool = extract_elite_programs(
+                gp, top_n=SEEDS_PER_GEN,
+                max_duplicates=MAX_SEED_DUPLICATES,
+                diversity_fraction=DIVERSITY_FRACTION,
+            )
+            logger.info("[Gen %d] Elite pool: %d programs → seeding gen %d.",
+                        gen, len(elite_pool), gen + 1)
 
         # ── Stale attractor detection ───────────────────────────────────────
         try:
@@ -620,6 +698,10 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 feat_win_counts[k] = int(feat_win_counts[k] * 0.3)
                 if feat_win_counts[k] <= 0:
                     del feat_win_counts[k]
+            for k in list(feat_loss_counts.keys()):
+                feat_loss_counts[k] = int(feat_loss_counts[k] * 0.3)
+                if feat_loss_counts[k] <= 0:
+                    del feat_loss_counts[k]
 
         del gp
         gc.collect()

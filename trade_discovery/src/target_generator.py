@@ -200,7 +200,11 @@ def run_first_touch_triple_barrier(
             exit_price_out[i] = np.float32(s_tp)
 
         elif res_l == 1 and res_s == 1:
-            targets[i]        = np.float32(0.0)
+            # Both TP levels hit on the same bar: asymmetric barrier breakout.
+            # Label as Long (+1.0): with TP > SL in absolute terms (2.4 vs 1.9),
+            # an event where both TPs trigger is a high-volatility long breakout
+            # that the short TP level is also reached due to bar wick symmetry.
+            targets[i]        = np.float32(1.0)
             event_type[i]     = EVENT_BOTH_TP
             event_bar[i]      = min(res_l_bar, res_s_bar) if res_l_bar >= 0 and res_s_bar >= 0 else -1
 
