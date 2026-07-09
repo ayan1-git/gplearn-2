@@ -69,6 +69,10 @@ MAX_SEED_DUPLICATES   = getattr(cfg, 'GEL_MAX_SEED_DUPLICATES',  2)
 DIVERSITY_FRACTION    = getattr(cfg, 'GEL_DIVERSITY_FRACTION',   0.50)
 FEATURE_PRIOR_DECAY   = getattr(cfg, 'GEL_FEATURE_PRIOR_DECAY',  0.40)
 FEATURE_LOSS_PENALTY  = getattr(cfg, 'GEL_FEATURE_LOSS_PENALTY', 0.50)
+WIN_DECAY_PER_GEN     = getattr(cfg, 'GEL_WIN_DECAY_PER_GEN',    0.70)
+PRIOR_MAX_CONCENTRATION = getattr(cfg, 'GEL_PRIOR_MAX_CONCENTRATION', 1.8)
+MAX_WINNER_SEED_FRACTION = getattr(cfg, 'GEL_MAX_WINNER_SEED_FRACTION', 0.40)
+SIG_STALE_RESET_GENS  = getattr(cfg, 'GEL_SIG_STALE_RESET_GENS',  2)
 
 # Phase-2 anti-convergence: inject fresh random programs into seed pool
 ANTI_CONVERGENCE_FRACTION = getattr(cfg, 'GEL_ANTI_CONVERGENCE_FRACTION', 0.10)
@@ -417,6 +421,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
     elite_pool:    List    = []
     winners:       List    = []
     seen_hashes:   set     = set()
+    winner_signatures: set = set()   # collapse math-equivalent winners (same OOS backtest)
     feat_win_counts        = Counter()
     feat_loss_counts       = Counter()   # Phase-1.5: negative feature feedback
     gen_meta_rows: List    = []
@@ -424,6 +429,11 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
     # Stale attractor tracking (anti-collapse)
     _stale_count    = 0
     _last_best_hash = None
+    # Signature-stale tracking — detects the "equivalent-winner permutation" loop
+    # where the GP keeps emitting different formula STRINGS that produce the
+    # identical OOS backtest (same 3-feature cluster reshuffled).
+    _sig_stale_count = 0
+    _last_sig        = None
 
     # ── Generational loop ─────────────────────────────────────────────────────
     for gen in range(1, GEL_GENERATIONS + 1):
@@ -437,6 +447,18 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # Feature prior (Dirichlet-smoothed from winner/loser history)
         all_feats  = list(X_train_s.columns)
         alpha      = cfg.GP_FEATURE_PRIOR_ALPHA
+
+        # ── Break the win-tally ratchet ───────────────────────────────────────
+        # A feature that appears in EVERY winner (e.g. feat_icp) would otherwise
+        # accumulate win counts without bound, permanently pinning the prior at
+        # its concentration cap and starving all other features. Decaying the
+        # win tallies each generation makes old wins fade, so a feature must keep
+        # winning to retain prior mass. Steady-state tally ≈ 1/(1-decay), which
+        # is bounded (e.g. ≈3.3 at decay=0.7) instead of climbing to ∞.
+        for _f in list(feat_win_counts.keys()):
+            feat_win_counts[_f] *= WIN_DECAY_PER_GEN
+            if feat_win_counts[_f] < 0.1:
+                del feat_win_counts[_f]
 
         # Balanced feedback: wins add, losses subtract (with penalty weight)
         net_scores = np.array(
@@ -453,9 +475,9 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # P3: cap concentration — no single feature may dominate the prior.
         # Without this the prior locks onto an early winner's features (e.g.
         # ret_norm_130d) and the search never explores elsewhere. Clip the
-        # max probability to 3x the uniform baseline, then renormalise.
+        # max probability to Nx the uniform baseline, then renormalise.
         uniform_p   = 1.0 / len(all_feats)
-        max_p       = 3.0 * uniform_p
+        max_p       = PRIOR_MAX_CONCENTRATION * uniform_p
         feat_proba  = np.minimum(feat_proba, max_p)
         feat_proba  = feat_proba / feat_proba.sum()
 
@@ -567,6 +589,49 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             'formula_hash': formula_hash[:16], 'winner': False,
         })
 
+        # ── OOS-signature dedup ───────────────────────────────────────────────
+        # Distinct formula STRINGS that produce the identical OOS backtest are
+        # math-equivalent (e.g. reshuffled {feat_icp, talib_adx, talib_adxr}).
+        # The string-hash dedup above cannot catch these, so they inflate the
+        # leaderboard with the same edge counted many times. Collapse them by a
+        # rounded performance signature, and use repeats to drive a stale-break.
+        oos_sig = (round(total_ret, 2), round(sharpe, 2),
+                   round(profit_fac, 2), n_trades)
+
+        if oos_sig == _last_sig:
+            _sig_stale_count += 1
+        else:
+            _sig_stale_count = 0
+            _last_sig = oos_sig
+
+        if oos_sig in winner_signatures:
+            logger.info(
+                "[Gen %d] Duplicate OOS signature %s — math-equivalent to an "
+                "existing winner. Skipping leaderboard add (sig-stale %d/%d).",
+                gen, oos_sig, _sig_stale_count, SIG_STALE_RESET_GENS
+            )
+            if _sig_stale_count >= SIG_STALE_RESET_GENS:
+                logger.warning(
+                    "[Gen %d] SIGNATURE-STALE — nuking elite pool + decaying "
+                    "prior to force exploration off the equivalent-winner cluster.",
+                    gen
+                )
+                elite_pool = []
+                _sig_stale_count = 0
+                _last_sig = None
+                for _k in list(feat_win_counts.keys()):
+                    feat_win_counts[_k] *= 0.3
+                    if feat_win_counts[_k] < 0.1:
+                        del feat_win_counts[_k]
+            else:
+                elite_pool = extract_elite_programs(
+                    gp, top_n=SEEDS_PER_GEN,
+                    max_duplicates=MAX_SEED_DUPLICATES,
+                    diversity_fraction=DIVERSITY_FRACTION,
+                )
+            del gp; gc.collect()
+            continue
+
         # ── Survivor gate ─────────────────────────────────────────────────────
         oos_evaluated = False
         if n_trades < MIN_HOLDOUT_TRADES:
@@ -596,6 +661,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         else:
             # ✓ Passed all gates
             seen_hashes.add(formula_hash)
+            winner_signatures.add(oos_sig)   # collapse future math-equivalent copies
 
             buy_thresh  = float(np.percentile(train_signals, ENTRY_PCT))
             sell_thresh = float(np.percentile(train_signals, EXIT_PCT))
@@ -666,13 +732,15 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # monotonically overfit (OOB 0.23→0.33 while holdout collapsed).
         if winners:
             winner_progs = [copy.deepcopy(w['program']) for w in winners]
-            # Exploit OOS-proven winners: give them the dominant share of the
-            # seed pool so the search REFINES a validated lineage instead of
-            # drifting back to in-sample-overfit elites (whose train fitness
-            # always outranks the winner's, so pure gplearn selection ignores
-            # it). Keep a small elite slice for diversity; the 300 anti-conv
-            # randoms + cold-start bootstrap still supply exploration.
-            n_winner = max(1, min(len(winner_progs), SEEDS_PER_GEN - 20))
+            # Seed from OOS-proven winners so the search REFINES a validated
+            # lineage — but CAP their share of the pool. Flooding the pool with
+            # winners (the old SEEDS_PER_GEN-20 = 90% share) made every seed a
+            # permutation of the same 3-feature cluster, so the GP re-derived
+            # math-equivalent formulas forever (identical OOB fitness, identical
+            # OOS backtest). Reserving the majority for diverse in-sample elite
+            # + the 300 anti-conv randoms keeps genuine exploration alive.
+            max_winner_seeds = max(1, int(SEEDS_PER_GEN * MAX_WINNER_SEED_FRACTION))
+            n_winner = min(len(winner_progs), max_winner_seeds)
             in_sample = extract_elite_programs(
                 gp, top_n=SEEDS_PER_GEN - n_winner,
                 max_duplicates=MAX_SEED_DUPLICATES,
@@ -717,8 +785,8 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             _last_best_hash = None
             # Also decay feature prior harder to break the attractor
             for k in list(feat_win_counts.keys()):
-                feat_win_counts[k] = int(feat_win_counts[k] * 0.3)
-                if feat_win_counts[k] <= 0:
+                feat_win_counts[k] *= 0.3
+                if feat_win_counts[k] < 0.1:
                     del feat_win_counts[k]
             for k in list(feat_loss_counts.keys()):
                 feat_loss_counts[k] = int(feat_loss_counts[k] * 0.3)
