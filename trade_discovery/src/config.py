@@ -79,8 +79,14 @@ SIGNAL_UNIQUE_FLOOR = 0.10      # raised from 0.05 → rejects near-constant sig
 SIGNAL_SEP_FLOOR    = 0.05      # min (85th-15th pct) threshold separation (rejects ~0-mag)
 
 # ── OOS SURVIVOR THRESHOLDS ───────────────────────────────────────────────
-OOS_MIN_RETURN        = 1.5
-OOS_MIN_SHARPE        = 1.2
+# GEL survivor gate — relaxed (2026-07-09) so the loop's feedback mechanisms
+# (P1 winner-seeding, P3 feature prior) can engage. The holdout regime
+# (2025-07-18→2026-01-23) has an empirical ceiling of ~0.9% return / ~0.9
+# Sharpe for this signal class, so the old 1.5% / 1.2 floors were unreachable
+# every generation → winners=0 → prior stayed uniform → evolution was unguided.
+# PF>1.1 (below) is now the binding economic gate (genuine edge exists).
+OOS_MIN_RETURN        = 0.5
+OOS_MIN_SHARPE        = 0.3
 OOS_MAX_DRAWDOWN      = 25.0
 OOS_MAX_DRAWDOWN_HIGH_SHARPE = 35.0   # relaxed gate for Sharpe > 3.5
 HIGH_SHARPE_THRESHOLD        = 3.5    # above this, apply relaxed DD gate

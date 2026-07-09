@@ -610,6 +610,14 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             })
             gen_meta_rows[-1]['winner'] = True
 
+            # Phase-1.5b — reset negative feature feedback on success. The
+            # loss penalty (GEL_FEATURE_LOSS_PENALTY=0.5, unbounded) would
+            # otherwise accumulate ~40-50 tallies from prior failing gens and
+            # cancel a winner's feature boost (net = wins - 0.5*losses < 0 →
+            # prior floored to uniform), silently undoing P3. Clearing here
+            # lets the validated lineage persist in the prior.
+            feat_loss_counts.clear()
+
             for feat in _features_used(formula_str):
                 feat_win_counts[feat] += 1
 
