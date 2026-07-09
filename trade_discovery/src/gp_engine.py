@@ -27,6 +27,8 @@ try:
     GT_SOFT_SCALE    = getattr(config, "GT_SOFT_SCALE", 3.0)
     ATTR_PENALTY_WEIGHT = getattr(config, "FITNESS_ATTR_PENALTY_WEIGHT", 0.25)
     POSTHOC_TRADE_EVAL  = getattr(config, "FITNESS_POSTHOC_TRADE_EVAL", True)
+    SPREAD_FLOOR = getattr(config, "FITNESS_SPREAD_FLOOR", 0.08)
+    SPREAD_WEIGHT = getattr(config, "FITNESS_SPREAD_WEIGHT", 5.0)
     ANTI_CONVERGENCE_FRACTION = getattr(config, "GEL_ANTI_CONVERGENCE_FRACTION", 0.10)
 except ImportError:
     POPULATION_SIZE = 3000
@@ -171,9 +173,17 @@ def _make_fitness_fn(pearson_w: float, direction_w: float):
 
         y_mean    = np.mean(y)
         yp_mean   = np.mean(y_pred)
-        num       = np.sum((y - y_mean) * (y_pred - yp_mean))
-        denom     = (np.std(y) * np.std(y_pred) * len(y)) + EPS
-        pearson_r = num / denom
+        yp_std    = np.std(y_pred)
+
+        # Degenerate (near-constant) predictors have no usable signal and make
+        # the Pearson denominator blow up numerically (the -8000 "Population
+        # Average" fitness). Treat them as zero correlation instead of +/-inf.
+        if yp_std < 1e-9:
+            pearson_r = 0.0
+        else:
+            num       = np.sum((y - y_mean) * (y_pred - yp_mean))
+            denom     = (np.std(y) * yp_std * len(y)) + EPS
+            pearson_r = num / denom
 
         long_mask  = (y == 1.0)
         short_mask = (y == -1.0)
@@ -195,8 +205,16 @@ def _make_fitness_fn(pearson_w: float, direction_w: float):
         wrong_short = np.mean(np.maximum(0.0,  y_pred[short_mask]))  if np.any(short_mask) else 0.0
         barrier_penalty = (wrong_long + wrong_short) / 2.0
 
+        # P2-fix: penalise near-constant (tiny-magnitude) signals. The
+        # execution layer needs real spread to trigger trades, but Pearson
+        # correlation is scale-invariant, so without this the GP collapses onto
+        # mul(vol, osc)-style formulas whose output is ~0 → 0 executable trades.
+        spread_penalty = max(0.0, SPREAD_FLOOR - yp_std)
+
         base_score = pearson_w * pearson_r + direction_w * dir_score
-        return float(base_score - ATTR_PENALTY_WEIGHT * barrier_penalty)
+        return float(base_score
+                     - ATTR_PENALTY_WEIGHT * barrier_penalty
+                     - SPREAD_WEIGHT * spread_penalty)
 
     return make_fitness(function=_directional_fitness, greater_is_better=True)
 

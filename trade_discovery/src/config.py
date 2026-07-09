@@ -64,13 +64,19 @@ FITNESS_PEARSON_WEIGHT   = 0.70
 FITNESS_DIRECTION_WEIGHT = 0.30
 FITNESS_ATTR_PENALTY_WEIGHT = 0.25   # penalty for wrong-sign predictions
 FITNESS_POSTHOC_TRADE_EVAL  = False  # P2: disable train-only trade-Sharpe selection (overfit)
+# P2-fix: penalise near-constant (tiny-magnitude) predictors. Pearson is
+# scale-invariant, so without this the GP collapses onto mul(vol,osc)-style
+# formulas whose output is ~0 → 0 executable trades on the holdout.
+FITNESS_SPREAD_FLOOR  = 0.08   # std(y_pred) below this is penalised
+FITNESS_SPREAD_WEIGHT = 5.0    # strength of the spread penalty
 
 # ── FORMULA QUALITY GUARDS ────────────────────────────────────────────────
 MIN_FEATURES_IN_FORMULA = 3     # reject formulas using fewer features
 MAX_PROGRAM_LENGTH      = 40    # P2: hard bloat cap (reject trees > 40 nodes)
 
 # ── SIGNAL QUALITY GUARDS ─────────────────────────────────────────────────
-SIGNAL_UNIQUE_FLOOR = 0.05      # raised from 0.005 → rejects true constants
+SIGNAL_UNIQUE_FLOOR = 0.10      # raised from 0.05 → rejects near-constant signals
+SIGNAL_SEP_FLOOR    = 0.05      # min (85th-15th pct) threshold separation (rejects ~0-mag)
 
 # ── OOS SURVIVOR THRESHOLDS ───────────────────────────────────────────────
 OOS_MIN_RETURN        = 1.5

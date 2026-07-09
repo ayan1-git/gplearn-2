@@ -47,6 +47,7 @@ EXIT_PCT            = cfg.EXIT_PCT
 MIN_FEATURES        = cfg.MIN_FEATURES_IN_FORMULA
 MAX_PROG_LEN        = cfg.MAX_PROGRAM_LENGTH
 SIGNAL_UNIQUE_FLOOR = cfg.SIGNAL_UNIQUE_FLOOR
+SIGNAL_SEP_FLOOR    = cfg.SIGNAL_SEP_FLOOR
 
 OOS_MIN_RETURN   = getattr(cfg, 'OOS_MIN_RETURN', 1.5)
 OOS_MIN_SHARPE   = getattr(cfg, 'OOS_MIN_SHARPE', 1.2)
@@ -277,24 +278,31 @@ def _check_signal_quality(train_signals: np.ndarray, gen: int) -> bool:
         (long_cov > 0.55 and short_cov < 0.03)
         or (short_cov > 0.55 and long_cov < 0.03)
     )
+    # P2-fix: the execution layer trades off the 85th/15th percentile bands, so
+    # a near-constant (tiny-magnitude) signal generates 0 trades even if its
+    # Pearson correlation looks fine. Require real separation between the
+    # buy/sell thresholds to reject ~0-magnitude signals that slip past the
+    # (weak) unique_ratio check (e.g. mul(vol, osc) → Buy~0.001, Sell~-0.0004).
+    threshold_sep = float(entry_thr - exit_thr)
     is_degenerate = (
         unique_ratio < SIGNAL_UNIQUE_FLOOR
         or norm_entropy < 0.25
         or is_one_sided
+        or threshold_sep < SIGNAL_SEP_FLOOR
     )
 
     if is_degenerate:
         logger.warning(
             "[Gen %d] Degenerate signal — unique_ratio=%.4f | norm_entropy=%.4f | "
-            "long_cov=%.3f | short_cov=%.3f | one_sided=%s",
-            gen, unique_ratio, norm_entropy, long_cov, short_cov, is_one_sided
+            "long_cov=%.3f | short_cov=%.3f | one_sided=%s | threshold_sep=%.4f",
+            gen, unique_ratio, norm_entropy, long_cov, short_cov, is_one_sided, threshold_sep
         )
         return False
 
     logger.info(
         "[Gen %d] Signal OK — unique_ratio=%.4f | norm_entropy=%.4f | "
-        "long_cov=%.3f | short_cov=%.3f | Buy>%.4f | Sell<%.4f",
-        gen, unique_ratio, norm_entropy, long_cov, short_cov, entry_thr, exit_thr
+        "long_cov=%.3f | short_cov=%.3f | Buy>%.4f | Sell<%.4f | sep=%.4f",
+        gen, unique_ratio, norm_entropy, long_cov, short_cov, entry_thr, exit_thr, threshold_sep
     )
     return True
 
