@@ -370,17 +370,21 @@ def generate_tbm_targets(
     both_tp_count    = int(event_counts.get("BOTH_TP",     0))
     both_sl_count    = int(event_counts.get("BOTH_SL",     0))
     wide_candle_count= int(event_counts.get("WIDE_CANDLE", 0))
+    long_tp_count    = int(event_counts.get("LONG_TP",     0))
+    short_tp_count   = int(event_counts.get("SHORT_TP",    0))
     long_sl_count    = int(event_counts.get("LONG_SL",     0))
     short_sl_count   = int(event_counts.get("SHORT_SL",    0))
+
+    # Full event breakdown (all event types, not just the rare edge cases).
+    full_event_breakdown = " | ".join(
+        f"{k}: {v}" for k, v in sorted(event_counts.items(), key=lambda kv: -kv[1])
+    )
 
     print(
         f"Target generation complete.\n"
         f"  Scored rows: {len(meta_aligned)} | Valid: {n_valid}\n"
         f"  Label distribution → Long: {n_long} | Short: {n_short} | Neutral: {n_neutral}\n"
-        f"  Event distribution → Timeout: {timeout_count} | Ambiguous: {ambiguous_count}\n"
-        f"                        Both TP: {both_tp_count} | Both SL: {both_sl_count} (dropped)\n"
-        f"                        Wide Candle: {wide_candle_count} (dropped)\n"
-        f"                        Long SL only: {long_sl_count} | Short SL only: {short_sl_count}"
+        f"  Event distribution → {full_event_breakdown}"
     )
 
     # Sanity assertion

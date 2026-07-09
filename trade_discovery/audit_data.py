@@ -142,27 +142,52 @@ def sample_rows(df: pd.DataFrame, targets: np.ndarray, mask: np.ndarray, n: int 
     return rows
 
 
-def leakage_surrogates(df: pd.DataFrame, targets: np.ndarray, max_lag: int = 3) -> Dict:
+def label_return_correlations(df: pd.DataFrame, targets: np.ndarray, max_lag: int = 3):
+    """Correlate targets with 1-bar returns at various lags.
+
+    - forward[L] : target[i] vs return[i+L]  (future return, inside the label window).
+                   This is expected to correlate — it is just the label's own outcome.
+    - past[L]    : target[i] vs return[i-L]  (past return) and same_bar.
+                   These SHOULD be ~0. A large value means the label is explained by
+                   information unavailable at decision time → a real leakage red flag.
+    """
     close = df['close'].to_numpy(dtype=np.float64)
     ret1 = np.full_like(close, np.nan)
     ret1[1:] = (close[1:] - close[:-1]) / np.maximum(close[:-1], 1e-12)
-    out = {}
-    for lag in range(-max_lag, max_lag + 1):
-        if lag < 0:
-            x = ret1[-lag:]
-            y = targets[:len(targets) + lag]
-        elif lag > 0:
-            x = ret1[:-lag]
-            y = targets[lag:]
-        else:
-            x = ret1
-            y = targets
-        m = np.isfinite(x) & np.isfinite(y)
-        if m.sum() > 10:
-            out[f'ret1_vs_target_lag_{lag}'] = float(np.corrcoef(x[m], y[m])[0, 1])
-        else:
-            out[f'ret1_vs_target_lag_{lag}'] = None
-    return out
+
+    n = len(targets)
+    forward, past = {}, {}
+    for L in range(1, max_lag + 1):
+        xf, yf = ret1[L:n], targets[:n - L]
+        mf = np.isfinite(xf) & np.isfinite(yf)
+        forward[f'fwd_ret+{L}'] = float(np.corrcoef(xf[mf], yf[mf])[0, 1]) if mf.sum() > 10 else None
+        xp, yp = ret1[:n - L], targets[L:n]
+        mp = np.isfinite(xp) & np.isfinite(yp)
+        past[f'past_ret-{L}'] = float(np.corrcoef(xp[mp], yp[mp])[0, 1]) if mp.sum() > 10 else None
+    ms = np.isfinite(ret1) & np.isfinite(targets)
+    past['same_bar'] = float(np.corrcoef(ret1[ms], targets[ms])[0, 1]) if ms.sum() > 10 else None
+
+    leakage_risk = max((abs(v) for v in past.values() if v is not None), default=0.0)
+    return {'forward': forward, 'past': past, 'leakage_risk': leakage_risk}
+
+
+def oracle_behavior(event_counts: Dict, n: int) -> Dict:
+    """Summarise the raw triple-barrier outcome mix (before any dropping)."""
+    tp = (event_counts.get('LONG_TP', 0) + event_counts.get('SHORT_TP', 0)
+          + event_counts.get('BOTH_TP', 0))
+    sl = (event_counts.get('LONG_SL', 0) + event_counts.get('SHORT_SL', 0)
+          + event_counts.get('BOTH_SL', 0))
+    timeout = event_counts.get('TIMEOUT', 0)
+    neutral = event_counts.get('AMBIGUOUS', 0) + event_counts.get('WIDE_CANDLE', 0)
+    denom = max(n, 1)
+    return {
+        'tp_hit_rate': tp / denom,
+        'sl_first_rate': sl / denom,
+        'timeout_rate': timeout / denom,
+        'neutral_rate': neutral / denom,
+        'anomaly': (sl == 0 and tp > 0),  # SL level is closer than TP, so SL-first
+                                           # should normally occur; 0 is suspicious.
+    }
 
 
 def main():
@@ -222,6 +247,22 @@ def main():
             return_metadata=True,
         )
 
+        # Raw event distribution (no dropping) — this is what the oracle actually
+        # produced before the pipeline removes whipsaw/neutral rows. Needed to judge
+        # oracle behaviour (TP vs SL vs timeout mix), which the dropped set hides.
+        _, _, meta_raw = generate_tbm_targets(
+            df_raw, df_features,
+            max_hold=max_hold,
+            tp_mult=tp_mult,
+            sl_mult=sl_mult,
+            atr_period=atr_period,
+            drop_both_sl=False,
+            drop_neutral=False,
+            return_metadata=True,
+        )
+        raw_reasons = meta_raw['event_type'].value_counts(dropna=False).to_dict()
+        behavior = oracle_behavior(raw_reasons, len(meta_raw))
+
         targets = y_targets_aligned.to_numpy(dtype=np.float32)
 
         # Display frame aligned row-for-row with the generated targets.
@@ -264,7 +305,7 @@ def main():
                 'rows': window.astype(str).to_dict(orient='records'),
             })
 
-        leak = leakage_surrogates(display, targets, max_lag=3)
+        leak = label_return_correlations(display, targets, max_lag=3)
 
         base = os.path.splitext(os.path.basename(path))[0]
         oracle_audit.to_csv(os.path.join(args.out, f'{base}_oracle_audit.csv'), index=False)
@@ -279,19 +320,25 @@ def main():
             'file': path,
             'ohlc_checks': ohlc,
             'target_distribution': dist,
-            'oracle_reason_counts': {k: int(v) for k, v in reasons.items()},
+            'trained_label_counts': {k: int(v) for k, v in reasons.items()},
+            'raw_event_counts': {k: int(v) for k, v in raw_reasons.items()},
+            'oracle_behavior': {k: (float(v) if isinstance(v, float) else v) for k, v in behavior.items()},
             'flat_sampler_examples_preview': flat_examples[:5],
             'zero_examples_preview': zero_examples[:5],
             'tiny_signal_examples_preview': tiny_examples[:5],
             'small_signal_examples_preview': small_examples[:5],
-            'leakage_surrogates': leak,
+            'label_return_correlations': leak,
             'notes': [
                 'Targets are generated by src/target_generator.generate_tbm_targets — the SAME',
                 'function main_pipeline.py uses to build training labels. This audit therefore',
                 'checks the actual labels the model trains on, not an independent reimplementation.',
-                'exact_zero (target==0) corresponds to neutral labels; positive/negative to long/short.',
-                'Large ret1_vs_target correlations at negative lags can indicate suspicious alignment or leakage proxies.',
-                'Review oracle_audit.csv for the real event-type breakdown (TIMEOUT, BOTH_TP, LONG_SL, ...).',
+                'raw_event_counts = oracle output BEFORE dropping whipsaw/neutral rows;',
+                'trained_label_counts = what the model actually trains on after DROP_WHIPSAW/DROP_NEUTRAL.',
+                'oracle_behavior.anomaly=True means ZERO SL-first events despite SL(1.9) < TP(2.4):',
+                'the stop is never hit first, which is suspicious for trending-vs-labeling and worth investigating.',
+                'label_return_correlations.past/same_bar should be ~0 (real leakage if large);',
+                'forward lags are expected to correlate (they are just the label\'s own window).',
+                'Review oracle_audit.csv for the per-row event-type breakdown.',
             ],
             'oracle_window_examples_preview': oracle_window_examples,
         }
@@ -304,16 +351,22 @@ def main():
         print(f"AUDIT REPORT: {os.path.basename(path)}")
         print("=" * 70)
         print(f"  Raw rows              : {ohlc['rows']}")
-        print(f"  Label rows (post-filter): {dist['n']}")
+        print(f"  Trained label rows    : {dist['n']}")
         print(f"  OHLC violations       : {ohlc['ohlc_violations']}")
         print(f"  Duplicate timestamps  : {ohlc['duplicated_timestamps']}")
         print(f"  Non-monotonic ts      : {ohlc['non_monotonic_timestamps']}")
-        print(f"  Target mean / std     : {dist['mean']:.4f} / {dist['std']:.4f}")
         print(f"  Long / Short / Neutral: {dist['positive_count']} / "
               f"{dist['negative_count']} / {dist['exact_zero_count']}")
-        print(f"  Event (reason) dist   : {reasons}")
-        leak_str = ", ".join(f"{k}={v}" for k, v in leak.items() if v is not None)
-        print(f"  Leakage surrogates    : {leak_str}")
+        print(f"  RAW oracle event mix  : {raw_reasons}")
+        print(f"  Trained label mix     : {reasons}")
+        print(f"  Oracle behaviour      : TP-hit={behavior['tp_hit_rate']:.1%} "
+              f"SL-first={behavior['sl_first_rate']:.1%} timeout={behavior['timeout_rate']:.1%}")
+        if behavior['anomaly']:
+            print("  !! ANOMALY: 0 SL-first events though SL(1.9) < TP(2.4) — investigate.")
+        fwd = ", ".join(f"{k}={v:.3f}" for k, v in leak['forward'].items() if v is not None)
+        past = ", ".join(f"{k}={v:.3f}" for k, v in leak['past'].items() if v is not None)
+        print(f"  Label↔FUTURE return   : {fwd}   (expected, not leakage)")
+        print(f"  Label↔PAST return     : {past}   (leakage_risk={leak['leakage_risk']:.3f}, want ~0)")
         print(f"  Reports written to    : {args.out}")
         print("=" * 70)
 
@@ -335,10 +388,11 @@ def main():
         'checklist_covered': [
             'Data integrity: OHLC violations, nulls, duplicate/non-monotonic timestamps',
             'Actual pipeline labels (long/short/neutral) via generate_tbm_targets',
-            'Target distribution sanity / exact-zero (neutral) share',
-            'Real triple-barrier event breakdown (timeout, both-TP, SL-only, ...)',
+            'RAW oracle outcome mix (TP/SL/timeout) BEFORE dropping — the real label behaviour',
+            'Trained label mix after DROP_WHIPSAW / DROP_NEUTRAL',
+            'Anomaly flag: zero SL-first events despite SL < TP',
+            'Leakage: label vs PAST/same-bar returns (~0 expected) separated from expected forward consistency',
             'Forward-window inspection of how each label was decided',
-            'Simple leakage surrogate correlations across lags',
         ],
     }
     with open(os.path.join(args.out, 'aggregate_summary.json'), 'w') as f:
@@ -351,12 +405,19 @@ def main():
         md.append(f"## {os.path.basename(s['file'])}")
         td = s['target_distribution']
         md.append(f"- Rows (raw): {s['ohlc_checks']['rows']}")
-        md.append(f"- Label rows (post-filter): {td['n']}")
-        md.append(f"- Neutral (exact zero) count: {td['exact_zero_count']} ({td['exact_zero_pct']:.2%})")
-        md.append(f"- Long / Short counts: {td['positive_count']} / {td['negative_count']}")
+        md.append(f"- Trained label rows: {td['n']}")
+        md.append(f"- Long / Short / Neutral: {td['positive_count']} / {td['negative_count']} / {td['exact_zero_count']}")
         md.append(f"- OHLC violations: {json.dumps(s['ohlc_checks']['ohlc_violations'])}")
-        md.append(f"- Top event reasons: {json.dumps(s['oracle_reason_counts'])}")
-        md.append(f"- Leakage surrogates: {json.dumps(s['leakage_surrogates'])}")
+        md.append(f"- RAW oracle event mix (before dropping): {json.dumps(s['raw_event_counts'])}")
+        md.append(f"- Trained label mix (after dropping): {json.dumps(s['trained_label_counts'])}")
+        b = s['oracle_behavior']
+        md.append(f"- Oracle behaviour: TP-hit={b['tp_hit_rate']:.1%} SL-first={b['sl_first_rate']:.1%} "
+                  f"timeout={b['timeout_rate']:.1%} anomaly={b['anomaly']}")
+        lr = s['label_return_correlations']
+        fwd = ", ".join(f"{k}={v:.3f}" for k, v in lr['forward'].items() if v is not None)
+        past = ", ".join(f"{k}={v:.3f}" for k, v in lr['past'].items() if v is not None)
+        md.append(f"- Label↔FUTURE return (expected): {fwd}")
+        md.append(f"- Label↔PAST return (leakage, want ~0): {past}  risk={lr['leakage_risk']:.3f}")
         md.append('')
     with open(os.path.join(args.out, 'README.md'), 'w') as f:
         f.write('\n'.join(md))
