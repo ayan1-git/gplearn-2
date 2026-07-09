@@ -658,7 +658,13 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # monotonically overfit (OOB 0.23→0.33 while holdout collapsed).
         if winners:
             winner_progs = [copy.deepcopy(w['program']) for w in winners]
-            n_winner = max(1, min(len(winner_progs), SEEDS_PER_GEN // 2))
+            # Exploit OOS-proven winners: give them the dominant share of the
+            # seed pool so the search REFINES a validated lineage instead of
+            # drifting back to in-sample-overfit elites (whose train fitness
+            # always outranks the winner's, so pure gplearn selection ignores
+            # it). Keep a small elite slice for diversity; the 300 anti-conv
+            # randoms + cold-start bootstrap still supply exploration.
+            n_winner = max(1, min(len(winner_progs), SEEDS_PER_GEN - 20))
             in_sample = extract_elite_programs(
                 gp, top_n=SEEDS_PER_GEN - n_winner,
                 max_duplicates=MAX_SEED_DUPLICATES,
