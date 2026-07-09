@@ -56,16 +56,17 @@ def _compute_wilder_atr(df_raw: pd.DataFrame, period: int = 14) -> pd.Series:
     true_range  = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
 
     # Wilder smoothing: seed with SMA of first `period` TRs, then recurse
-    atr = true_range.copy().astype(float)
-    atr.iloc[:period] = np.nan
+    # Use an explicit writable float64 buffer — `Series.values` can be a
+    # read-only view depending on the pandas/numpy build, which breaks the
+    # in-place loop below ("assignment destination is read-only").
+    alpha = 1.0 / period
+    values = true_range.to_numpy(dtype=float, copy=True)
+    atr_values = np.empty(len(values), dtype=float)
+    atr_values[:period] = np.nan
 
     # Seed value: simple mean of first `period` true ranges
-    seed = true_range.iloc[:period].mean()
-    atr.iloc[period - 1] = seed
+    atr_values[period - 1] = true_range.iloc[:period].mean()
 
-    alpha = 1.0 / period
-    values = true_range.values
-    atr_values = atr.values
     for k in range(period, len(values)):
         atr_values[k] = atr_values[k - 1] * (1.0 - alpha) + values[k] * alpha
 
