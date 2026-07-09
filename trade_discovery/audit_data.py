@@ -298,6 +298,10 @@ def main():
         df_raw = df_raw.set_index('timestamp')
         df_raw.index.name = 'datetime'
         df_raw = df_raw.sort_index()
+        # Data confirmed to be in Asia/Kolkata; localize so session features are
+        # unambiguous and the tz-naive warning is resolved.
+        if df_raw.index.tz is None:
+            df_raw = df_raw.tz_localize('Asia/Kolkata')
 
         df_features = calculate_features(
             df_raw,

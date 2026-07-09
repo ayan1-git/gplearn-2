@@ -110,7 +110,7 @@
         "index_monotonic": true,
         "features_subset_of_raw": true,
         "trailing_rows_trimmed": 3991,
-        "tz_aware": "None",
+        "tz_aware": "Asia/Kolkata",
         "feature_nan_pct": {
           "ewma_vol_span260": 0.0015,
           "ret_norm_1d": 0.0015,
@@ -146,9 +146,155 @@
           "feat_ob_res_touches": 0.0,
           "feat_ob_res_mask": 0.0,
           "feat_ob_supp_dist": 0.0,
-          "feat_ob_res_dist": 0.0
+          "feat_ob_res_dist": 0.0,
+          "talib_ht_dcperiod": 0.0005,
+          "talib_ht_dcphase": 0.0017,
+          "talib_ht_trendmode": 0.0,
+          "talib_adx": 0.0003,
+          "talib_adxr": 0.0008,
+          "talib_apo": 0.0002,
+          "talib_aroon_0": 0.0,
+          "talib_aroon_1": 0.0,
+          "talib_aroonosc": 0.0,
+          "talib_cci": 0.0,
+          "talib_cmo": 0.0,
+          "talib_dx": 0.0,
+          "talib_macd_0": 0.0005,
+          "talib_macd_1": 0.0005,
+          "talib_macd_2": 0.0005,
+          "talib_macdext_0": 0.0005,
+          "talib_macdext_1": 0.0005,
+          "talib_macdext_2": 0.0005,
+          "talib_macdfix_0": 0.0005,
+          "talib_macdfix_1": 0.0005,
+          "talib_macdfix_2": 0.0005,
+          "talib_minus_di": 0.0,
+          "talib_minus_dm": 0.0,
+          "talib_mom": 0.0,
+          "talib_plus_di": 0.0,
+          "talib_plus_dm": 0.0,
+          "talib_ppo": 0.0002,
+          "talib_roc": 0.0,
+          "talib_rocp": 0.0,
+          "talib_rocr": 0.0,
+          "talib_rocr100": 0.0,
+          "talib_rsi": 0.0,
+          "talib_stoch_0": 0.0,
+          "talib_stoch_1": 0.0,
+          "talib_stochf_0": 0.0,
+          "talib_stochf_1": 0.0,
+          "talib_stochrsi_0": 0.0,
+          "talib_stochrsi_1": 0.0,
+          "talib_trix": 0.0027,
+          "talib_ultosc": 0.0003,
+          "talib_willr": 0.0,
+          "talib_bbands_0": 0.0,
+          "talib_bbands_1": 0.0,
+          "talib_bbands_2": 0.0,
+          "talib_dema": 0.0015,
+          "talib_ema": 0.0004,
+          "talib_ht_trendline": 0.0017,
+          "talib_kama": 0.0004,
+          "talib_ma": 0.0004,
+          "talib_mama_0": 0.0005,
+          "talib_mama_1": 0.0005,
+          "talib_mavp": 0.0004,
+          "talib_midpoint": 0.0,
+          "talib_midprice": 0.0,
+          "talib_sar": 0.0,
+          "talib_sarext": 0.0,
+          "talib_sma": 0.0004,
+          "talib_t3": 0.0002,
+          "talib_tema": 0.0027,
+          "talib_trima": 0.0004,
+          "talib_wma": 0.0004,
+          "talib_cdl2crows": 0.0,
+          "talib_cdl3blackcrows": 0.0,
+          "talib_cdl3inside": 0.0,
+          "talib_cdl3linestrike": 0.0,
+          "talib_cdl3outside": 0.0,
+          "talib_cdl3starsinsouth": 0.0,
+          "talib_cdl3whitesoldiers": 0.0,
+          "talib_cdlabandonedbaby": 0.0,
+          "talib_cdladvanceblock": 0.0,
+          "talib_cdlbelthold": 0.0,
+          "talib_cdlbreakaway": 0.0,
+          "talib_cdlclosingmarubozu": 0.0,
+          "talib_cdlconcealbabyswall": 0.0,
+          "talib_cdlcounterattack": 0.0,
+          "talib_cdldarkcloudcover": 0.0,
+          "talib_cdldoji": 0.0,
+          "talib_cdldojistar": 0.0,
+          "talib_cdldragonflydoji": 0.0,
+          "talib_cdlengulfing": 0.0,
+          "talib_cdleveningdojistar": 0.0,
+          "talib_cdleveningstar": 0.0,
+          "talib_cdlgapsidesidewhite": 0.0,
+          "talib_cdlgravestonedoji": 0.0,
+          "talib_cdlhammer": 0.0,
+          "talib_cdlhangingman": 0.0,
+          "talib_cdlharami": 0.0,
+          "talib_cdlharamicross": 0.0,
+          "talib_cdlhighwave": 0.0,
+          "talib_cdlhikkake": 0.0,
+          "talib_cdlhikkakemod": 0.0,
+          "talib_cdlhomingpigeon": 0.0,
+          "talib_cdlidentical3crows": 0.0,
+          "talib_cdlinneck": 0.0,
+          "talib_cdlinvertedhammer": 0.0,
+          "talib_cdlkicking": 0.0,
+          "talib_cdlkickingbylength": 0.0,
+          "talib_cdlladderbottom": 0.0,
+          "talib_cdllongleggeddoji": 0.0,
+          "talib_cdllongline": 0.0,
+          "talib_cdlmarubozu": 0.0,
+          "talib_cdlmatchinglow": 0.0,
+          "talib_cdlmathold": 0.0,
+          "talib_cdlmorningdojistar": 0.0,
+          "talib_cdlmorningstar": 0.0,
+          "talib_cdlonneck": 0.0,
+          "talib_cdlpiercing": 0.0,
+          "talib_cdlrickshawman": 0.0,
+          "talib_cdlrisefall3methods": 0.0,
+          "talib_cdlseparatinglines": 0.0,
+          "talib_cdlshootingstar": 0.0,
+          "talib_cdlshortline": 0.0,
+          "talib_cdlspinningtop": 0.0,
+          "talib_cdlstalledpattern": 0.0,
+          "talib_cdlsticksandwich": 0.0,
+          "talib_cdltakuri": 0.0,
+          "talib_cdltasukigap": 0.0,
+          "talib_cdlthrusting": 0.0,
+          "talib_cdltristar": 0.0,
+          "talib_cdlunique3river": 0.0,
+          "talib_cdlupsidegap2crows": 0.0,
+          "talib_cdlxsidegap3methods": 0.0,
+          "talib_medprice": 0.0,
+          "talib_typprice": 0.0,
+          "talib_wclprice": 0.0,
+          "talib_beta": 0.0,
+          "talib_correl": 0.0004,
+          "talib_linearreg": 0.0,
+          "talib_linearreg_angle": 0.0,
+          "talib_linearreg_intercept": 0.0,
+          "talib_linearreg_slope": 0.0,
+          "talib_stddev": 0.0,
+          "talib_tsf": 0.0,
+          "talib_var": 0.0,
+          "talib_atr": 0.0,
+          "talib_natr": 0.0,
+          "talib_trange": 0.0
         },
-        "constant_features": [],
+        "constant_features": [
+          "talib_cdl3starsinsouth",
+          "talib_cdlabandonedbaby",
+          "talib_cdlbreakaway",
+          "talib_cdlconcealbabyswall",
+          "talib_cdlcounterattack",
+          "talib_cdlkicking",
+          "talib_cdlkickingbylength",
+          "talib_cdlmathold"
+        ],
         "high_nan_features": [
           "macd_8_24",
           "macd_26_78",
@@ -168,7 +314,7 @@
           "macd_8_24": 0.0626,
           "macd_26_78": 0.0065,
           "macd_52_156": -0.0019,
-          "vs_factor_span260": -0.0168,
+          "vs_factor_span260": -0.0242,
           "feat_efficiency": 0.0622,
           "feat_icp": 0.0987,
           "feat_momentum_rsi": 0.0868,
@@ -183,14 +329,151 @@
           "feat_ichimoku_dist_kijun": 0.0726,
           "feat_ichimoku_dist_span_a": 0.025,
           "feat_ichimoku_dist_span_b": 0.0138,
-          "feat_ob_supp_level": -0.0274,
+          "feat_ob_supp_level": -0.0514,
           "feat_ob_supp_touches": -0.0308,
           "feat_ob_supp_mask": -0.0274,
-          "feat_ob_res_level": -0.0156,
+          "feat_ob_res_level": -0.0492,
           "feat_ob_res_touches": -0.032,
           "feat_ob_res_mask": 0.0008,
           "feat_ob_supp_dist": 0.028,
-          "feat_ob_res_dist": -0.0009
+          "feat_ob_res_dist": -0.0009,
+          "talib_ht_dcperiod": -0.0645,
+          "talib_ht_dcphase": 0.0213,
+          "talib_ht_trendmode": 0.0162,
+          "talib_adx": -0.0238,
+          "talib_adxr": -0.0296,
+          "talib_apo": 0.0337,
+          "talib_aroon_0": -0.0755,
+          "talib_aroon_1": 0.0539,
+          "talib_aroonosc": 0.0688,
+          "talib_cci": 0.0984,
+          "talib_cmo": 0.0853,
+          "talib_dx": -0.0142,
+          "talib_macd_0": 0.0328,
+          "talib_macd_1": 0.0126,
+          "talib_macd_2": 0.0723,
+          "talib_macdext_0": 0.0368,
+          "talib_macdext_1": 0.0122,
+          "talib_macdext_2": 0.056,
+          "talib_macdfix_0": 0.0325,
+          "talib_macdfix_1": 0.0124,
+          "talib_macdfix_2": 0.0722,
+          "talib_minus_di": -0.0578,
+          "talib_minus_dm": -0.0179,
+          "talib_mom": -0.0083,
+          "talib_plus_di": 0.067,
+          "talib_plus_dm": 0.0472,
+          "talib_ppo": 0.0292,
+          "talib_roc": 0.064,
+          "talib_rocp": 0.064,
+          "talib_rocr": 0.064,
+          "talib_rocr100": 0.064,
+          "talib_rsi": 0.0868,
+          "talib_stoch_0": 0.1054,
+          "talib_stoch_1": 0.1002,
+          "talib_stochf_0": 0.0984,
+          "talib_stochf_1": 0.1054,
+          "talib_stochrsi_0": 0.0763,
+          "talib_stochrsi_1": 0.088,
+          "talib_trix": -0.0125,
+          "talib_ultosc": 0.0913,
+          "talib_willr": 0.1147,
+          "talib_bbands_0": -0.0655,
+          "talib_bbands_1": -0.0745,
+          "talib_bbands_2": -0.0435,
+          "talib_dema": -0.0889,
+          "talib_ema": -0.0782,
+          "talib_ht_trendline": -0.0807,
+          "talib_kama": -0.0788,
+          "talib_ma": -0.0813,
+          "talib_mama_0": -0.0918,
+          "talib_mama_1": -0.0855,
+          "talib_mavp": -0.0808,
+          "talib_midpoint": -0.0973,
+          "talib_midprice": -0.1034,
+          "talib_sar": -0.0891,
+          "talib_sarext": 0.0738,
+          "talib_sma": -0.0813,
+          "talib_t3": -0.07,
+          "talib_tema": -0.0748,
+          "talib_trima": -0.0842,
+          "talib_wma": -0.0894,
+          "talib_cdl2crows": -0.0032,
+          "talib_cdl3blackcrows": -0.0099,
+          "talib_cdl3inside": 0.0086,
+          "talib_cdl3linestrike": -0.0085,
+          "talib_cdl3outside": 0.0193,
+          "talib_cdl3starsinsouth": null,
+          "talib_cdl3whitesoldiers": 0.0032,
+          "talib_cdlabandonedbaby": null,
+          "talib_cdladvanceblock": -0.0212,
+          "talib_cdlbelthold": 0.0574,
+          "talib_cdlbreakaway": null,
+          "talib_cdlclosingmarubozu": 0.0362,
+          "talib_cdlconcealbabyswall": null,
+          "talib_cdlcounterattack": null,
+          "talib_cdldarkcloudcover": 0.0033,
+          "talib_cdldoji": 0.0026,
+          "talib_cdldojistar": -0.0158,
+          "talib_cdldragonflydoji": -0.0093,
+          "talib_cdlengulfing": 0.0159,
+          "talib_cdleveningdojistar": -0.01,
+          "talib_cdleveningstar": -0.0053,
+          "talib_cdlgapsidesidewhite": 0.0028,
+          "talib_cdlgravestonedoji": 0.0042,
+          "talib_cdlhammer": -0.0135,
+          "talib_cdlhangingman": -0.0097,
+          "talib_cdlharami": -0.0114,
+          "talib_cdlharamicross": 0.0017,
+          "talib_cdlhighwave": 0.0058,
+          "talib_cdlhikkake": -0.0133,
+          "talib_cdlhikkakemod": 0.0016,
+          "talib_cdlhomingpigeon": -0.0091,
+          "talib_cdlidentical3crows": 0.0029,
+          "talib_cdlinneck": 0.0086,
+          "talib_cdlinvertedhammer": 0.0105,
+          "talib_cdlkicking": null,
+          "talib_cdlkickingbylength": null,
+          "talib_cdlladderbottom": 0.0063,
+          "talib_cdllongleggeddoji": 0.0027,
+          "talib_cdllongline": 0.049,
+          "talib_cdlmarubozu": 0.0326,
+          "talib_cdlmatchinglow": -0.0135,
+          "talib_cdlmathold": null,
+          "talib_cdlmorningdojistar": 0.002,
+          "talib_cdlmorningstar": -0.0019,
+          "talib_cdlonneck": 0.0086,
+          "talib_cdlpiercing": -0.0002,
+          "talib_cdlrickshawman": 0.0011,
+          "talib_cdlrisefall3methods": 0.0,
+          "talib_cdlseparatinglines": 0.0071,
+          "talib_cdlshootingstar": -0.0048,
+          "talib_cdlshortline": 0.0111,
+          "talib_cdlspinningtop": 0.005,
+          "talib_cdlstalledpattern": -0.0115,
+          "talib_cdlsticksandwich": 0.0059,
+          "talib_cdltakuri": -0.0085,
+          "talib_cdltasukigap": -0.0006,
+          "talib_cdlthrusting": 0.0,
+          "talib_cdltristar": -0.0018,
+          "talib_cdlunique3river": -0.0071,
+          "talib_cdlupsidegap2crows": -0.0063,
+          "talib_cdlxsidegap3methods": -0.0037,
+          "talib_medprice": -0.0407,
+          "talib_typprice": -0.0407,
+          "talib_wclprice": -0.0407,
+          "talib_beta": -0.0075,
+          "talib_correl": 0.0248,
+          "talib_linearreg": -0.0368,
+          "talib_linearreg_angle": -0.008,
+          "talib_linearreg_intercept": -0.0862,
+          "talib_linearreg_slope": -0.0096,
+          "talib_stddev": -0.0072,
+          "talib_tsf": -0.0155,
+          "talib_var": -0.0011,
+          "talib_atr": 0.0068,
+          "talib_natr": 0.0054,
+          "talib_trange": -0.024
         },
         "feature_target_corr_lag+1": {
           "ewma_vol_span260": 0.0326,
@@ -205,7 +488,7 @@
           "macd_8_24": 0.054,
           "macd_26_78": 0.0017,
           "macd_52_156": -0.0041,
-          "vs_factor_span260": -0.0173,
+          "vs_factor_span260": -0.0249,
           "feat_efficiency": 0.0511,
           "feat_icp": 0.0891,
           "feat_momentum_rsi": 0.0748,
@@ -220,28 +503,165 @@
           "feat_ichimoku_dist_kijun": 0.0624,
           "feat_ichimoku_dist_span_a": 0.0172,
           "feat_ichimoku_dist_span_b": 0.0073,
-          "feat_ob_supp_level": -0.0281,
+          "feat_ob_supp_level": -0.042,
           "feat_ob_supp_touches": -0.0296,
           "feat_ob_supp_mask": -0.0287,
-          "feat_ob_res_level": -0.0148,
+          "feat_ob_res_level": -0.0424,
           "feat_ob_res_touches": -0.0328,
           "feat_ob_res_mask": -0.0007,
           "feat_ob_supp_dist": 0.0293,
-          "feat_ob_res_dist": 0.0007
+          "feat_ob_res_dist": 0.0007,
+          "talib_ht_dcperiod": -0.0629,
+          "talib_ht_dcphase": 0.0171,
+          "talib_ht_trendmode": 0.016,
+          "talib_adx": -0.0234,
+          "talib_adxr": -0.0298,
+          "talib_apo": 0.0261,
+          "talib_aroon_0": -0.0692,
+          "talib_aroon_1": 0.0412,
+          "talib_aroonosc": 0.059,
+          "talib_cci": 0.0869,
+          "talib_cmo": 0.0737,
+          "talib_dx": -0.012,
+          "talib_macd_0": 0.0261,
+          "talib_macd_1": 0.0073,
+          "talib_macd_2": 0.0666,
+          "talib_macdext_0": 0.03,
+          "talib_macdext_1": 0.0061,
+          "talib_macdext_2": 0.0541,
+          "talib_macdfix_0": 0.0258,
+          "talib_macdfix_1": 0.0071,
+          "talib_macdfix_2": 0.0665,
+          "talib_minus_di": -0.0459,
+          "talib_minus_dm": -0.0101,
+          "talib_mom": -0.004,
+          "talib_plus_di": 0.057,
+          "talib_plus_dm": 0.0443,
+          "talib_ppo": 0.0256,
+          "talib_roc": 0.0563,
+          "talib_rocp": 0.0563,
+          "talib_rocr": 0.0563,
+          "talib_rocr100": 0.0563,
+          "talib_rsi": 0.0748,
+          "talib_stoch_0": 0.0965,
+          "talib_stoch_1": 0.0904,
+          "talib_stochf_0": 0.0893,
+          "talib_stochf_1": 0.0965,
+          "talib_stochrsi_0": 0.0687,
+          "talib_stochrsi_1": 0.0811,
+          "talib_trix": -0.0138,
+          "talib_ultosc": 0.0824,
+          "talib_willr": 0.1021,
+          "talib_bbands_0": -0.0555,
+          "talib_bbands_1": -0.0628,
+          "talib_bbands_2": -0.0369,
+          "talib_dema": -0.0778,
+          "talib_ema": -0.0667,
+          "talib_ht_trendline": -0.0699,
+          "talib_kama": -0.067,
+          "talib_ma": -0.0697,
+          "talib_mama_0": -0.0816,
+          "talib_mama_1": -0.074,
+          "talib_mavp": -0.0692,
+          "talib_midpoint": -0.0863,
+          "talib_midprice": -0.0932,
+          "talib_sar": -0.0815,
+          "talib_sarext": 0.0706,
+          "talib_sma": -0.0697,
+          "talib_t3": -0.0588,
+          "talib_tema": -0.0664,
+          "talib_trima": -0.0732,
+          "talib_wma": -0.0775,
+          "talib_cdl2crows": -0.0032,
+          "talib_cdl3blackcrows": -0.0099,
+          "talib_cdl3inside": 0.0112,
+          "talib_cdl3linestrike": -0.01,
+          "talib_cdl3outside": 0.0189,
+          "talib_cdl3starsinsouth": null,
+          "talib_cdl3whitesoldiers": 0.0065,
+          "talib_cdlabandonedbaby": null,
+          "talib_cdladvanceblock": -0.0212,
+          "talib_cdlbelthold": 0.0461,
+          "talib_cdlbreakaway": null,
+          "talib_cdlclosingmarubozu": 0.0284,
+          "talib_cdlconcealbabyswall": null,
+          "talib_cdlcounterattack": null,
+          "talib_cdldarkcloudcover": 0.0003,
+          "talib_cdldoji": 0.0011,
+          "talib_cdldojistar": -0.0173,
+          "talib_cdldragonflydoji": -0.0118,
+          "talib_cdlengulfing": 0.0128,
+          "talib_cdleveningdojistar": -0.0047,
+          "talib_cdleveningstar": 0.0053,
+          "talib_cdlgapsidesidewhite": 0.0028,
+          "talib_cdlgravestonedoji": 0.0003,
+          "talib_cdlhammer": -0.015,
+          "talib_cdlhangingman": -0.0097,
+          "talib_cdlharami": -0.0132,
+          "talib_cdlharamicross": -0.0007,
+          "talib_cdlhighwave": 0.0048,
+          "talib_cdlhikkake": -0.0007,
+          "talib_cdlhikkakemod": 0.0016,
+          "talib_cdlhomingpigeon": -0.0091,
+          "talib_cdlidentical3crows": 0.0011,
+          "talib_cdlinneck": 0.0086,
+          "talib_cdlinvertedhammer": 0.0094,
+          "talib_cdlkicking": null,
+          "talib_cdlkickingbylength": null,
+          "talib_cdlladderbottom": 0.0025,
+          "talib_cdllongleggeddoji": 0.0009,
+          "talib_cdllongline": 0.0384,
+          "talib_cdlmarubozu": 0.0235,
+          "talib_cdlmatchinglow": -0.0105,
+          "talib_cdlmathold": null,
+          "talib_cdlmorningdojistar": 0.0047,
+          "talib_cdlmorningstar": -0.0059,
+          "talib_cdlonneck": 0.005,
+          "talib_cdlpiercing": -0.0063,
+          "talib_cdlrickshawman": 0.0038,
+          "talib_cdlrisefall3methods": -0.0077,
+          "talib_cdlseparatinglines": 0.0071,
+          "talib_cdlshootingstar": -0.0048,
+          "talib_cdlshortline": 0.0072,
+          "talib_cdlspinningtop": 0.0007,
+          "talib_cdlstalledpattern": -0.0182,
+          "talib_cdlsticksandwich": 0.0125,
+          "talib_cdltakuri": -0.0111,
+          "talib_cdltasukigap": -0.0068,
+          "talib_cdlthrusting": 0.0056,
+          "talib_cdltristar": 0.0026,
+          "talib_cdlunique3river": -0.0071,
+          "talib_cdlupsidegap2crows": -0.0063,
+          "talib_cdlxsidegap3methods": -0.0007,
+          "talib_medprice": -0.0358,
+          "talib_typprice": -0.0358,
+          "talib_wclprice": -0.0358,
+          "talib_beta": -0.0054,
+          "talib_correl": 0.0235,
+          "talib_linearreg": -0.0294,
+          "talib_linearreg_angle": -0.0038,
+          "talib_linearreg_intercept": -0.0758,
+          "talib_linearreg_slope": -0.0051,
+          "talib_stddev": -0.0022,
+          "talib_tsf": -0.0106,
+          "talib_var": 0.0047,
+          "talib_atr": 0.0107,
+          "talib_natr": 0.01,
+          "talib_trange": -0.0247
         },
         "split_train_rows": 18075,
         "split_holdout_rows": 4526,
         "split_overlap": 0,
         "split_train_range": [
-          "2022-01-21 14:00:00",
-          "2025-07-04 11:15:00"
+          "2022-01-21 14:00:00+05:30",
+          "2025-07-04 11:15:00+05:30"
         ],
         "split_holdout_range": [
-          "2025-07-07 13:00:00",
-          "2026-05-18 12:30:00"
+          "2025-07-07 13:00:00+05:30",
+          "2026-05-18 12:30:00+05:30"
         ],
         "flags": [
-          "TIMEZONE: DatetimeIndex is tz-naive; confirm data is already in Asia/Kolkata",
+          "FEATURES: 8 constant/dead feature(s): ['talib_cdl3starsinsouth', 'talib_cdlabandonedbaby', 'talib_cdlbreakaway', 'talib_cdlconcealbabyswall', 'talib_cdlcounterattack', 'talib_cdlkicking', 'talib_cdlkickingbylength', 'talib_cdlmathold']",
           "FEATURES: 4 feature(s) >5% NaN (drive row drops): ['macd_8_24', 'macd_26_78', 'macd_52_156', 'feat_ob_res_level']"
         ]
       },
@@ -264,7 +684,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-21 14:00:00",
+              "datetime": "2022-01-21 14:00:00+05:30",
               "open": "7635.6",
               "high": "7642.6",
               "low": "7607.25",
@@ -272,212 +692,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-21 14:15:00",
+              "datetime": "2022-01-21 14:15:00+05:30",
               "open": "7608.05",
               "high": "7608.45",
               "low": "7556.85",
               "close": "7561.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 14:30:00",
+              "datetime": "2022-01-21 14:30:00+05:30",
               "open": "7560.7",
               "high": "7568.15",
               "low": "7512.85",
               "close": "7512.85",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 14:45:00",
+              "datetime": "2022-01-21 14:45:00+05:30",
               "open": "7513.25",
               "high": "7519.4",
               "low": "7490.45",
               "close": "7491.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 15:00:00",
+              "datetime": "2022-01-21 15:00:00+05:30",
               "open": "7492.95",
               "high": "7566.2",
               "low": "7492.95",
               "close": "7555.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 15:15:00",
+              "datetime": "2022-01-21 15:15:00+05:30",
               "open": "7556.05",
               "high": "7567.35",
               "low": "7543.8",
               "close": "7563.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:15:00",
+              "datetime": "2022-01-24 09:15:00+05:30",
               "open": "7548.9",
               "high": "7559.0",
               "low": "7431.65",
               "close": "7431.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
               "close": "7434.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -487,7 +907,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-21 14:15:00",
+              "datetime": "2022-01-21 14:15:00+05:30",
               "open": "7608.05",
               "high": "7608.45",
               "low": "7556.85",
@@ -495,212 +915,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-21 14:30:00",
+              "datetime": "2022-01-21 14:30:00+05:30",
               "open": "7560.7",
               "high": "7568.15",
               "low": "7512.85",
               "close": "7512.85",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 14:45:00",
+              "datetime": "2022-01-21 14:45:00+05:30",
               "open": "7513.25",
               "high": "7519.4",
               "low": "7490.45",
               "close": "7491.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 15:00:00",
+              "datetime": "2022-01-21 15:00:00+05:30",
               "open": "7492.95",
               "high": "7566.2",
               "low": "7492.95",
               "close": "7555.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 15:15:00",
+              "datetime": "2022-01-21 15:15:00+05:30",
               "open": "7556.05",
               "high": "7567.35",
               "low": "7543.8",
               "close": "7563.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:15:00",
+              "datetime": "2022-01-24 09:15:00+05:30",
               "open": "7548.9",
               "high": "7559.0",
               "low": "7431.65",
               "close": "7431.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
               "close": "7434.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -710,7 +1130,7 @@
           "target": 1.0,
           "rows": [
             {
-              "datetime": "2022-01-21 14:45:00",
+              "datetime": "2022-01-21 14:45:00+05:30",
               "open": "7513.25",
               "high": "7519.4",
               "low": "7490.45",
@@ -718,212 +1138,212 @@
               "target_at_entry": "1.0"
             },
             {
-              "datetime": "2022-01-21 15:00:00",
+              "datetime": "2022-01-21 15:00:00+05:30",
               "open": "7492.95",
               "high": "7566.2",
               "low": "7492.95",
               "close": "7555.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-21 15:15:00",
+              "datetime": "2022-01-21 15:15:00+05:30",
               "open": "7556.05",
               "high": "7567.35",
               "low": "7543.8",
               "close": "7563.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:15:00",
+              "datetime": "2022-01-24 09:15:00+05:30",
               "open": "7548.9",
               "high": "7559.0",
               "low": "7431.65",
               "close": "7431.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
               "close": "7434.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -933,7 +1353,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-21 15:00:00",
+              "datetime": "2022-01-21 15:00:00+05:30",
               "open": "7492.95",
               "high": "7566.2",
               "low": "7492.95",
@@ -941,212 +1361,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-21 15:15:00",
+              "datetime": "2022-01-21 15:15:00+05:30",
               "open": "7556.05",
               "high": "7567.35",
               "low": "7543.8",
               "close": "7563.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:15:00",
+              "datetime": "2022-01-24 09:15:00+05:30",
               "open": "7548.9",
               "high": "7559.0",
               "low": "7431.65",
               "close": "7431.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
               "close": "7434.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:15:00",
+              "datetime": "2022-01-24 15:15:00+05:30",
               "open": "7279.2",
               "high": "7279.9",
               "low": "7243.9",
               "close": "7251.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -1156,7 +1576,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-24 09:15:00",
+              "datetime": "2022-01-24 09:15:00+05:30",
               "open": "7548.9",
               "high": "7559.0",
               "low": "7431.65",
@@ -1164,212 +1584,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
               "close": "7434.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:15:00",
+              "datetime": "2022-01-24 15:15:00+05:30",
               "open": "7279.2",
               "high": "7279.9",
               "low": "7243.9",
               "close": "7251.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:15:00",
+              "datetime": "2022-01-25 09:15:00+05:30",
               "open": "7191.4",
               "high": "7237.1",
               "low": "7098.3",
               "close": "7223.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:30:00",
+              "datetime": "2022-01-25 09:30:00+05:30",
               "open": "7223.6",
               "high": "7306.1",
               "low": "7223.0",
               "close": "7292.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -1379,7 +1799,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-24 09:30:00",
+              "datetime": "2022-01-24 09:30:00+05:30",
               "open": "7431.6",
               "high": "7443.65",
               "low": "7392.75",
@@ -1387,212 +1807,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
               "close": "7425.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:15:00",
+              "datetime": "2022-01-24 15:15:00+05:30",
               "open": "7279.2",
               "high": "7279.9",
               "low": "7243.9",
               "close": "7251.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:15:00",
+              "datetime": "2022-01-25 09:15:00+05:30",
               "open": "7191.4",
               "high": "7237.1",
               "low": "7098.3",
               "close": "7223.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:30:00",
+              "datetime": "2022-01-25 09:30:00+05:30",
               "open": "7223.6",
               "high": "7306.1",
               "low": "7223.0",
               "close": "7292.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:45:00",
+              "datetime": "2022-01-25 09:45:00+05:30",
               "open": "7293.0",
               "high": "7332.4",
               "low": "7287.55",
               "close": "7327.05",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -1602,7 +2022,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-24 09:45:00",
+              "datetime": "2022-01-24 09:45:00+05:30",
               "open": "7435.25",
               "high": "7456.8",
               "low": "7414.25",
@@ -1610,212 +2030,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
               "close": "7404.4",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:15:00",
+              "datetime": "2022-01-24 15:15:00+05:30",
               "open": "7279.2",
               "high": "7279.9",
               "low": "7243.9",
               "close": "7251.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:15:00",
+              "datetime": "2022-01-25 09:15:00+05:30",
               "open": "7191.4",
               "high": "7237.1",
               "low": "7098.3",
               "close": "7223.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:30:00",
+              "datetime": "2022-01-25 09:30:00+05:30",
               "open": "7223.6",
               "high": "7306.1",
               "low": "7223.0",
               "close": "7292.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:45:00",
+              "datetime": "2022-01-25 09:45:00+05:30",
               "open": "7293.0",
               "high": "7332.4",
               "low": "7287.55",
               "close": "7327.05",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 10:00:00",
+              "datetime": "2022-01-25 10:00:00+05:30",
               "open": "7327.7",
               "high": "7340.8",
               "low": "7276.65",
               "close": "7293.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         },
@@ -1825,7 +2245,7 @@
           "target": -1.0,
           "rows": [
             {
-              "datetime": "2022-01-24 10:00:00",
+              "datetime": "2022-01-24 10:00:00+05:30",
               "open": "7425.35",
               "high": "7430.0",
               "low": "7401.1",
@@ -1833,212 +2253,212 @@
               "target_at_entry": "-1.0"
             },
             {
-              "datetime": "2022-01-24 10:15:00",
+              "datetime": "2022-01-24 10:15:00+05:30",
               "open": "7403.35",
               "high": "7403.35",
               "low": "7362.75",
               "close": "7367.65",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:30:00",
+              "datetime": "2022-01-24 10:30:00+05:30",
               "open": "7368.4",
               "high": "7375.4",
               "low": "7354.2",
               "close": "7373.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 10:45:00",
+              "datetime": "2022-01-24 10:45:00+05:30",
               "open": "7373.5",
               "high": "7373.5",
               "low": "7348.2",
               "close": "7366.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:00:00",
+              "datetime": "2022-01-24 11:00:00+05:30",
               "open": "7365.25",
               "high": "7377.85",
               "low": "7346.25",
               "close": "7357.25",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:15:00",
+              "datetime": "2022-01-24 11:15:00+05:30",
               "open": "7357.2",
               "high": "7365.05",
               "low": "7349.65",
               "close": "7357.7",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:30:00",
+              "datetime": "2022-01-24 11:30:00+05:30",
               "open": "7357.35",
               "high": "7362.0",
               "low": "7336.55",
               "close": "7336.95",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 11:45:00",
+              "datetime": "2022-01-24 11:45:00+05:30",
               "open": "7336.55",
               "high": "7336.75",
               "low": "7311.25",
               "close": "7316.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:00:00",
+              "datetime": "2022-01-24 12:00:00+05:30",
               "open": "7315.35",
               "high": "7320.15",
               "low": "7301.05",
               "close": "7312.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:15:00",
+              "datetime": "2022-01-24 12:15:00+05:30",
               "open": "7313.2",
               "high": "7316.8",
               "low": "7284.3",
               "close": "7295.1",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:30:00",
+              "datetime": "2022-01-24 12:30:00+05:30",
               "open": "7295.4",
               "high": "7310.85",
               "low": "7277.0",
               "close": "7277.0",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 12:45:00",
+              "datetime": "2022-01-24 12:45:00+05:30",
               "open": "7277.35",
               "high": "7291.05",
               "low": "7269.5",
               "close": "7271.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:00:00",
+              "datetime": "2022-01-24 13:00:00+05:30",
               "open": "7270.4",
               "high": "7313.2",
               "low": "7270.4",
               "close": "7309.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:15:00",
+              "datetime": "2022-01-24 13:15:00+05:30",
               "open": "7309.1",
               "high": "7310.55",
               "low": "7268.1",
               "close": "7269.6",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:30:00",
+              "datetime": "2022-01-24 13:30:00+05:30",
               "open": "7269.6",
               "high": "7270.85",
               "low": "7249.8",
               "close": "7268.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 13:45:00",
+              "datetime": "2022-01-24 13:45:00+05:30",
               "open": "7268.6",
               "high": "7276.2",
               "low": "7241.5",
               "close": "7245.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:00:00",
+              "datetime": "2022-01-24 14:00:00+05:30",
               "open": "7245.1",
               "high": "7257.9",
               "low": "7188.65",
               "close": "7191.3",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:15:00",
+              "datetime": "2022-01-24 14:15:00+05:30",
               "open": "7191.6",
               "high": "7267.3",
               "low": "7191.6",
               "close": "7228.2",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:30:00",
+              "datetime": "2022-01-24 14:30:00+05:30",
               "open": "7228.2",
               "high": "7252.25",
               "low": "7213.55",
               "close": "7225.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 14:45:00",
+              "datetime": "2022-01-24 14:45:00+05:30",
               "open": "7226.45",
               "high": "7239.95",
               "low": "7202.85",
               "close": "7238.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:00:00",
+              "datetime": "2022-01-24 15:00:00+05:30",
               "open": "7236.15",
               "high": "7282.1",
               "low": "7236.15",
               "close": "7278.8",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-24 15:15:00",
+              "datetime": "2022-01-24 15:15:00+05:30",
               "open": "7279.2",
               "high": "7279.9",
               "low": "7243.9",
               "close": "7251.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:15:00",
+              "datetime": "2022-01-25 09:15:00+05:30",
               "open": "7191.4",
               "high": "7237.1",
               "low": "7098.3",
               "close": "7223.75",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:30:00",
+              "datetime": "2022-01-25 09:30:00+05:30",
               "open": "7223.6",
               "high": "7306.1",
               "low": "7223.0",
               "close": "7292.45",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 09:45:00",
+              "datetime": "2022-01-25 09:45:00+05:30",
               "open": "7293.0",
               "high": "7332.4",
               "low": "7287.55",
               "close": "7327.05",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 10:00:00",
+              "datetime": "2022-01-25 10:00:00+05:30",
               "open": "7327.7",
               "high": "7340.8",
               "low": "7276.65",
               "close": "7293.35",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             },
             {
-              "datetime": "2022-01-25 10:15:00",
+              "datetime": "2022-01-25 10:15:00+05:30",
               "open": "7293.7",
               "high": "7304.05",
               "low": "7268.95",
               "close": "7285.55",
-              "target_at_entry": NaN
+              "target_at_entry": "nan"
             }
           ]
         }

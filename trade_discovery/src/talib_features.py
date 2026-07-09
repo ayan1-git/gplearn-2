@@ -8,6 +8,7 @@ the pipeline's static registration system.
 import logging
 import numpy as np
 import pandas as pd
+import src.config as cfg
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,8 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     c = np.array(df_raw["close"].values, dtype=np.float64)
     idx = df_raw.index
     n_rows = len(c)
+    # ATR (price-scale volatility) used to make price-level features dimensionless.
+    atr = talib.ATR(h, l, c, timeperiod=int(getattr(cfg, 'ATR_PERIOD', 20))) if _TALIB_AVAILABLE else None
 
     # Pre-calculate reference scale (approx volatility) for Tanh normalization
     price_std = np.nanstd(c) + _EPS
@@ -139,19 +142,19 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
                         if i < len(outputs):
                             val = _safe(outputs[i], n_rows)
                             if len(val) == n_rows:
-                                feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                                feats[name] = _apply_smart_normalization(_talib_kind(group, f_name), val, c, atr)
                 # Single 2D array
                 elif isinstance(outputs, np.ndarray) and outputs.ndim == 2:
                     for i in range(min(count, outputs.shape[0])):
                         name = f"talib_{f_name.lower()}_{i}"
                         val = _safe(outputs[i], n_rows)
                         if len(val) == n_rows:
-                            feats[name] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                            feats[name] = _apply_smart_normalization(_talib_kind(group, f_name), val, c, atr)
             else:
                 # Single output
                 val = _safe(outputs, n_rows)
                 if len(val) == n_rows:
-                    feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(f_name, val, price_std, group, c)
+                    feats[f"talib_{f_name.lower()}"] = _apply_smart_normalization(_talib_kind(group, f_name), val, c, atr)
                         
         except Exception:
             continue
@@ -166,24 +169,67 @@ def build_talib_features(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(final_feats, index=idx, dtype=np.float64)
 
-def _apply_smart_normalization(f_name: str, arr: np.ndarray, price_std: float, group: str, close: np.ndarray) -> np.ndarray:
-    # Overlap Studies (Price levels) -> Deviation from close
-    if group == "Overlap Studies":
-        return np.tanh((close - arr) / (arr * 0.01 + _EPS))
+def _zscore(arr: np.ndarray, clip: float = 5.0) -> np.ndarray:
+    """Scale-invariant z-score with NaN handling and clipping (never saturates)."""
+    arr = np.asarray(arr, dtype=np.float64)
+    mu = np.nanmean(arr)
+    sd = np.nanstd(arr)
+    if not np.isfinite(sd) or sd == 0:
+        return np.zeros_like(arr)
+    return np.clip((arr - mu) / sd, -clip, clip)
 
-    # Bounded Oscillators [0, 100] -> [-1, 1]
-    if any(x in f_name for x in ["RSI", "MFI", "ADX", "STOCH", "WILLR", "AROON", "ULTOSC", "CCI"]):
-        # Safe check for range
-        try:
-            amin = np.nanmin(arr)
-            if amin < -50: # Likely -100 to 0
-                return (arr + 50) / 50.0
-            return (arr - 50) / 50.0
-        except Exception:
-            return arr # Fallback
 
-    if "NATR" in f_name or "ROC" in f_name:
-        return np.tanh(arr / 5.0)
+def _talib_kind(group: str, f_name: str) -> str:
+    """Map a TA-Lib function to a normalization kind (see _apply_smart_normalization)."""
+    if group == "Pattern Recognition":
+        return "pattern"
+    if group in ("Overlap Studies", "Price Transform"):
+        return "price_level"
+    _OSC = ["RSI", "MFI", "ADX", "ADXR", "CCI", "CMO", "DX", "MINUS_DI", "PLUS_DI",
+            "PPO", "APO", "AROON", "WILLR", "ULTOSC", "STOCH", "BETA", "CORREL"]
+    if any(x in f_name for x in _OSC):
+        return "oscillator"
+    if f_name in ("ROC", "ROCP", "ROCR", "ROCR100"):
+        return "return_ratio"
+    if f_name == "MOM":
+        return "price_level"
+    if any(x in f_name for x in ["LINEARREG", "TSF"]):
+        return "price_level"
+    if any(x in f_name for x in ["STDDEV", "VAR"]):
+        return "volatility_raw"
+    if f_name in ("NATR", "TRANGE", "ATR"):
+        return "volatility_raw"
+    return "zscore"  # safe scale-invariant fallback
 
-    # General Tanh scaling
-    return np.tanh(arr / (price_std * 0.1 + _EPS))
+
+def _apply_smart_normalization(kind: str, arr: np.ndarray, close: np.ndarray, atr) -> np.ndarray:
+    """Kind-aware, scale-invariant normalization.
+
+    Uses dimensionless transforms (z-score, deviation-from-close-in-ATR z-scored,
+    log-z) so large-magnitude price/level features can never saturate to a constant ±1.
+    """
+    arr = np.asarray(arr, dtype=np.float64)
+    close = np.asarray(close, dtype=np.float64)
+    atr = np.asarray(atr, dtype=np.float64) if atr is not None else np.zeros_like(arr)
+
+    if kind == "pattern":
+        return arr  # already scaled by /100 at the call site
+    if kind == "mask":
+        return arr
+    if kind == "oscillator":
+        amin = np.nanmin(arr) if np.isfinite(arr).any() else 0.0
+        if amin < -50:  # e.g. CCI spans ~[-200, 200]
+            return np.clip((arr + 50.0) / 50.0, -1.0, 1.0)
+        return np.clip((arr - 50.0) / 50.0, -1.0, 1.0)
+    if kind in ("return_ratio", "volatility_raw"):
+        return _zscore(arr)
+    if kind == "skewed_positive":
+        a = np.clip(arr, _EPS, None)
+        return _zscore(np.log(a))
+    if kind == "price_level":
+        # Dimensionless deviation of the level from price, in ATR units, then
+        # z-scored so it can never saturate even in strong trends.
+        dev = (arr - close) / (atr + _EPS)
+        return _zscore(dev, clip=6.0)
+    # default: scale-invariant z-score (never saturates, regardless of raw scale)
+    return _zscore(arr)

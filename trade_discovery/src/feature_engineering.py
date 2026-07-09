@@ -565,12 +565,17 @@ def macd_signals_multi(
 
 def volatility_scaling_factor(prices: pd.Series, span: int = 63) -> pd.Series:
     """
-    1/σ_t — used for volatility-targeted position sizing (Eq. 22).
+    1/σ_t — used as a feature (volatility scaling factor).
 
-    Heavily right-skewed → ROBUST scaling bucket in data_loader.py.
+    Heavily right-skewed, so normalise robustly: log (compress skew) then z-score,
+    clipped. (Original intent was a ROBUST scaling bucket; it was previously left as
+    raw 1/σ, which saturated tanh-based normalisers.)
     """
     sigma = ewma_volatility(prices, span=span)
     vs = 1.0 / sigma.where(sigma > _EPS, other=np.nan)
+    vs = np.log(vs.clip(_EPS, None))
+    vs = (vs - vs.mean()) / vs.std()
+    vs = vs.clip(-5.0, 5.0)
     vs.name = f"vs_factor_span{span}"
     return vs
 
@@ -1337,16 +1342,25 @@ class OptimizedOrderBlockEngine:
             if int_bear:
                 out_int_res[i] = min(int_bear, key=lambda x: x["bot"])["bot"]
 
-        result["feat_ob_supp_level"] = out_swg_supp
+        close_s = result["close"]
+        # Local volatility (≈ ATR scale) used to make the level features dimensionless.
+        vol_s = close_s.rolling(window=20, min_periods=5).std().fillna(close_s.std())
+        supp_raw = pd.Series(out_swg_supp, index=result.index)
+        res_raw = pd.Series(out_swg_res, index=result.index)
+
+        # Distance of S/R from price, in price units (used by the *_dist companions).
+        dist_supp = (close_s - supp_raw) / (close_s + EPS)
+        dist_res = (res_raw - close_s) / (close_s + EPS)
+
+        # Normalise the *level* features: distance of S/R from price, expressed in
+        # volatility units (not raw rupees), so they don't dominate / saturate scaling.
+        result["feat_ob_supp_level"] = ((supp_raw - close_s) / (vol_s + EPS)).clip(-6.0, 6.0).astype(np.float64)
         result["feat_ob_supp_touches"] = out_swg_supp_touches.astype(np.float64)
         result["feat_ob_supp_mask"] = mask_swg_supp.astype(np.float64)
 
-        result["feat_ob_res_level"] = out_swg_res
+        result["feat_ob_res_level"] = ((res_raw - close_s) / (vol_s + EPS)).clip(-6.0, 6.0).astype(np.float64)
         result["feat_ob_res_touches"] = out_swg_res_touches.astype(np.float64)
         result["feat_ob_res_mask"] = mask_swg_res.astype(np.float64)
-
-        dist_supp = (result["close"] - result["feat_ob_supp_level"]) / (result["close"] + EPS)
-        dist_res = (result["feat_ob_res_level"] - result["close"]) / (result["close"] + EPS)
 
         result["feat_ob_supp_dist"] = np.where(mask_swg_supp, dist_supp, self.missing_fill).astype(np.float64)
         result["feat_ob_res_dist"] = np.where(mask_swg_res, dist_res, self.missing_fill).astype(np.float64)

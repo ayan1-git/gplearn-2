@@ -74,32 +74,51 @@ def _safe_stat(series: pd.Series, stat: str) -> float:
 
 
 def _approx_mi(x: pd.Series, y: pd.Series, bins: int = 20) -> float:
-    """Histogram-based mutual information (nats). Returns NaN if degenerate."""
+    """Histogram-based mutual information (nats). Returns NaN if degenerate.
+
+    Uses quantile-based bin edges so continuous float features (whose raw values
+    are spaced far below 1e-12) are binned robustly instead of tripping a raw
+    resolution guard. Degeneracy is checked on the *binned* integer values.
+    """
     x = x.dropna()
     y = y.loc[x.index].dropna()
     if len(x) < 20 or len(y) < 20:
         return float("nan")
-    xv = x.values
-    yv = y.values
-    ux = np.unique(xv)
-    uy = np.unique(yv)
-    if len(ux) < 2 or len(uy) < 2:
+    xv = x.values.astype(float)
+    yv = y.values.astype(float)
+    # Bin each variable. Low-cardinality variables (e.g. a binary target) are
+    # mapped to integer category codes; continuous ones use quantile edges.
+    def _codes(v, bins):
+        uniq = np.unique(v)
+        if len(uniq) <= bins:
+            # Categorical: rank unique values to integer codes 0..k-1.
+            order = {u: i for i, u in enumerate(uniq)}
+            return np.array([order[val] for val in v], dtype=int), len(uniq)
+        try:
+            q = np.linspace(0.0, 1.0, bins + 1)
+            edges = np.unique(np.quantile(v, q))
+            if len(edges) < 3:
+                return None, 0
+            cb = np.digitize(v, edges[1:-1])
+            cb = np.clip(cb, 0, len(edges) - 2)
+            return cb, len(edges) - 1
+        except (ValueError, IndexError):
+            return None, 0
+
+    x_b, nb_x = _codes(xv, bins)
+    y_b, nb_y = _codes(yv, bins)
+    if x_b is None or y_b is None:
         return float("nan")
-    if np.nanmin(np.abs(np.diff(ux))) < 1e-12 or np.nanmin(np.abs(np.diff(uy))) < 1e-12:
+    # Degeneracy check on binned (integer) values — not raw floats.
+    if len(np.unique(x_b)) < 2 or len(np.unique(y_b)) < 2:
         return float("nan")
-    try:
-        x_b = np.digitize(xv, np.histogram_bin_edges(xv, bins=bins)[1:-1])
-        y_b = np.digitize(yv, np.histogram_bin_edges(yv, bins=bins)[1:-1])
-    except ValueError:
-        return float("nan")
-    x_b = np.clip(x_b, 0, bins - 1)
-    y_b = np.clip(y_b, 0, bins - 1)
-    joint = np.zeros((bins, bins), dtype=float)
+    nb = max(nb_x, nb_y)
+    joint = np.zeros((nb, nb), dtype=float)
     for xi, yi in zip(x_b, y_b):
         joint[xi, yi] += 1.0
     joint /= joint.sum()
-    if np.any(joint == 0):
-        return float("nan")
+    # Empty cells (joint == 0) are normal for a 2-D histogram and contribute
+    # 0 to MI (0 * log 0 == 0); do NOT treat them as degenerate.
     px = joint.sum(axis=1, keepdims=True)
     py = joint.sum(axis=0, keepdims=True)
     with np.errstate(invalid="ignore", divide="ignore"):

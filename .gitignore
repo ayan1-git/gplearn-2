@@ -27,3 +27,35 @@ trade_discovery/logs/
 # OS files
 .DS_Store
 Thumbs.db
+trade_discovery/.kilo/kilo.json
+trade_discovery/.kilo/skills/bigquery-ai-ml/LICENSE
+trade_discovery/.kilo/skills/bigquery-ai-ml/SKILL.md
+trade_discovery/.kilo/skills/bigquery-ai-ml/references/ai_detect_anomalies.md
+trade_discovery/.kilo/skills/bigquery-ai-ml/references/ai_forecast.md
+trade_discovery/.kilo/skills/bigquery-ai-ml/references/ai_generate.md
+trade_discovery/.kilo/skills/dataset-transformation/LICENSE
+trade_discovery/.kilo/skills/dataset-transformation/SKILL.md
+trade_discovery/.kilo/skills/senior-data-engineer/LICENSE
+trade_discovery/.kilo/skills/senior-data-engineer/SKILL.md
+trade_discovery/.kilo/skills/senior-data-engineer/references/data_modeling_patterns.md
+trade_discovery/.kilo/skills/senior-data-engineer/references/data_pipeline_architecture.md
+trade_discovery/.kilo/skills/senior-data-engineer/references/dataops_best_practices.md
+trade_discovery/.kilo/skills/senior-data-engineer/references/troubleshooting.md
+trade_discovery/.kilo/skills/senior-data-engineer/references/workflows.md
+trade_discovery/output/data_label_audit/aggregate_summary.json
+trade_discovery/output/data_label_audit/NIFTY MID SELECT_15minute_summary.json
+trade_discovery/output/feature_audit/feature_normalization.json
+trade_discovery/output/data_label_audit/README.md
+trade_discovery/.kilo/skills/dataset-transformation/references/code_output_guide.md
+trade_discovery/.kilo/skills/dataset-transformation/references/dataset_transformation_code.md
+trade_discovery/.kilo/skills/dataset-transformation/references/sagemaker_dataset_formats.md
+trade_discovery/output/data_label_audit/aggregate_summary.json
+trade_discovery/output/data_label_audit/NIFTY MID SELECT_15minute_summary.json
+trade_discovery/output/data_label_audit/README.md
+trade_discovery/output/data_label_audit/aggregate_summary.json
+trade_discovery/output/data_label_audit/NIFTY MID SELECT_15minute_summary.json
+trade_discovery/output/data_label_audit/README.md
+trade_discovery/output/data_label_audit/aggregate_summary.json
+trade_discovery/output/data_label_audit/NIFTY MID SELECT_15minute_summary.json
+trade_discovery/output/data_label_audit/aggregate_summary.json
+trade_discovery/output/data_label_audit/README.md
