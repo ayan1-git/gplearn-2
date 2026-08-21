@@ -12,58 +12,81 @@ feature-prior feedback loop was a no-op.
 
 This module patches the installed gplearn source on disk so that:
 
-1. `_Program.build_program()` / `point_mutation()` sample *variable*
-   terminals from `program.feature_proba_` (inverse-CDF) instead of
-   uniformly, when the attribute is present.
+1. `_Program.build_program()` / `point_mutation()` route every variable-
+   terminal draw through `_Program._sample_feature_idx()`, which samples
+   from the program's `feature_proba_` distribution (inverse-CDF) when
+   available and falls back to uniform otherwise. The constant-vs-variable
+   split of the original `randint(n_features + 1)` behaviour is preserved
+   (important: SymbolicRegressor defaults to const_range=(-1, 1), so this
+   branch is the hot path).
 2. `genetic._parallel_evolve` receives `_feature_proba` through the fit
-   params dict and attaches it to every newly constructed program, so the
-   prior survives joblib/loky worker processes (workers re-import gplearn
-   from disk, which is why the patch must live in the source file rather
-   than be monkeypatched in-memory).
+   params dict, attaches it to every newly constructed program AND sets it
+   as the `_Program._class_feature_proba_` fallback — so generation-0
+   programs (which are built inside `_Program.__init__` before any
+   per-instance attachment can happen) honour the prior too.
+3. The prior survives joblib/loky worker processes because the patch lives
+   in the gplearn source file on disk; workers re-import gplearn fresh.
 
-Known limitation: generation-0 cold-start programs are built inside
-`_Program.__init__` before the prior can be attached, so gen-0 init is
-uniform. Every later generation (including all warm-start phases and all
-seeded runs) uses the prior. This is acceptable — the prior matters most
-once evolution is underway.
+Version history (state-based detection, sequential in-place upgrades):
+  v1  instance-attr prior, attached after construction (gen-0 uniform) — bug
+  v2  + class-level fallback, but the elif gate still short-circuited gen-0
+  v3  unconditional routing through the sampler — but the const_range branch
+      (the DEFAULT path for SymbolicRegressor!) was still untouched
+  v4  const_range branch also honours the prior, preserving the original
+      1/(n+1) constant-vs-variable split
 
-The patch is marker-guarded ("FEATURE-PRIOR PATCH"), verified by exact
-string anchors, applied atomically, and fails soft: if anything goes wrong
-(read-only site-packages, unexpected gplearn version) it logs a warning and
-the pipeline continues with the previous behaviour (uniform sampling).
+Fails soft: if anything goes wrong (read-only site-packages, unexpected
+gplearn version) it logs a warning and the pipeline continues with uniform
+sampling.
 """
 import importlib
 import logging
 import os
-import sys
 
 logger = logging.getLogger(__name__)
 
 _MARKER = "FEATURE-PRIOR PATCH"
 
-# ── _program.py patches ──────────────────────────────────────────────────────
+# ── _program.py ──────────────────────────────────────────────────────────────
 
-# Insert a prior-aware terminal sampler right before build_program.
 _PROGRAM_HELPER_ANCHOR = "    def build_program(self, random_state):"
-_PROGRAM_HELPER_INSERT = '''    # ── FEATURE-PRIOR PATCH (trade_discovery/project_core) ──────────────
+
+_HELPER_LATEST = '''    # ── FEATURE-PRIOR PATCH (trade_discovery/project_core) v4 ───────────
     def _sample_feature_idx(self, random_state):
         """Sample a variable-terminal index using this program's
-        `feature_proba_` distribution when present, else uniformly."""
+        `feature_proba_` distribution when present (instance or class-level
+        fallback), else uniformly."""
         probs = getattr(self, 'feature_proba_', None)
+        if probs is None:
+            probs = getattr(type(self), '_class_feature_proba_', None)
         if probs is None:
             return random_state.randint(self.n_features)
         return int(random_state.choice(self.n_features, p=probs))
 
     def build_program(self, random_state):'''
 
-# Route variable-terminal draws through the sampler (occurs exactly twice:
-# once in build_program, once in point_mutation).
-_TERMINAL_BLOCK_OLD = """                if self.const_range is not None:
+# v1 helper body (upgrade path only)
+_HELPER_V1_BODY = """        probs = getattr(self, 'feature_proba_', None)
+        if probs is None:
+            return random_state.randint(self.n_features)
+        return int(random_state.choice(self.n_features, p=probs))"""
+
+_HELPER_V2_BODY = """        probs = getattr(self, 'feature_proba_', None)
+        if probs is None:
+            probs = getattr(type(self), '_class_feature_proba_', None)
+        if probs is None:
+            return random_state.randint(self.n_features)
+        return int(random_state.choice(self.n_features, p=probs))"""
+
+# Original (unpatched) terminal-draw block; occurs exactly twice.
+_TERMINAL_BLOCK_ORIG = """                if self.const_range is not None:
                     terminal = random_state.randint(self.n_features + 1)
                 else:
                     terminal = random_state.randint(self.n_features)
 """
-_TERMINAL_BLOCK_NEW = """                if self.const_range is not None:
+
+# v2 terminal block (elif gate short-circuited gen-0 — bug; upgrade path only)
+_TERMINAL_BLOCK_V2 = """                if self.const_range is not None:
                     terminal = random_state.randint(self.n_features + 1)
                 elif getattr(self, 'feature_proba_', None) is not None:
                     # FEATURE-PRIOR PATCH: draw variable terminals from the
@@ -73,9 +96,39 @@ _TERMINAL_BLOCK_NEW = """                if self.const_range is not None:
                     terminal = random_state.randint(self.n_features)
 """
 
-# ── genetic.py patches ───────────────────────────────────────────────────────
+# v3 terminal block (const_range branch untouched — bug; upgrade path only)
+_TERMINAL_BLOCK_V3 = """                if self.const_range is not None:
+                    terminal = random_state.randint(self.n_features + 1)
+                else:
+                    # FEATURE-PRIOR PATCH v3: routes through the feature prior
+                    # (instance or class-level) when present, else uniform.
+                    terminal = self._sample_feature_idx(random_state)
+"""
 
-# Plumb the prior into the per-worker params dict.
+# v4 (latest): both branches honour the prior; the constant-vs-variable
+# split mirrors the original randint(n_features + 1) distribution.
+_TERMINAL_BLOCK_V4 = """                if self.const_range is not None:
+                    # FEATURE-PRIOR PATCH v4: honour the prior for variable
+                    # terminals while preserving the original 1/(n+1)
+                    # constant-vs-variable split.
+                    _fp = getattr(self, 'feature_proba_', None)
+                    if _fp is None:
+                        _fp = getattr(type(self), '_class_feature_proba_', None)
+                    if _fp is None:
+                        terminal = random_state.randint(self.n_features + 1)
+                    elif (random_state.uniform()
+                          * (self.n_features + 1) < 1.0):
+                        terminal = self.n_features   # constant sentinel
+                    else:
+                        terminal = self._sample_feature_idx(random_state)
+                else:
+                    # FEATURE-PRIOR PATCH: routes through the feature prior
+                    # (instance or class-level) when present, else uniform.
+                    terminal = self._sample_feature_idx(random_state)
+"""
+
+# ── genetic.py ───────────────────────────────────────────────────────────────
+
 _GENETIC_PARAMS_ANCHOR = (
     "        params['method_probs'] = self._method_probs\n"
 )
@@ -87,15 +140,18 @@ _GENETIC_PARAMS_INSERT = (
     "        params['_feature_proba'] = getattr(self, '_feature_proba', None)\n"
 )
 
-# Unpack it inside _parallel_evolve.
 _EVOLVE_UNPACK_ANCHOR = "    feature_names = params['feature_names']\n"
-_EVOLVE_UNPACK_INSERT = (
+
+_EVOLVE_UNPACK_V2 = (
     "    feature_names = params['feature_names']\n"
-    "    # FEATURE-PRIOR PATCH: unpack the feature prior (may be None).\n"
+    "    # FEATURE-PRIOR PATCH: unpack the feature prior (may be None) and\n"
+    "    # install it as the class-level fallback so generation-0 programs\n"
+    "    # (built inside _Program.__init__ before per-instance attachment)\n"
+    "    # also honour the prior.\n"
     "    _feature_proba_ = params.get('_feature_proba', None)\n"
+    "    _Program._class_feature_proba_ = _feature_proba_\n"
 )
 
-# Attach it to every freshly constructed program.
 _EVOLVE_ATTACH_ANCHOR = "        program.parents = genome\n"
 _EVOLVE_ATTACH_INSERT = (
     "        program.parents = genome\n"
@@ -106,39 +162,35 @@ _EVOLVE_ATTACH_INSERT = (
 )
 
 
-def _patch_file(path: str, ops: list) -> bool:
-    """Apply (text_old -> text_new, expected_count) ops to one file.
-
-    Returns True if the file already carries the marker or was patched
-    successfully; raises on anchor mismatch.
-    """
+def _read(path):
     with open(path, "r", encoding="utf-8") as f:
-        src = f.read()
+        return f.read()
 
-    if _MARKER in src:
-        return True  # already patched
 
-    for old, new, expected in ops:
-        count = src.count(old)
-        if count != expected:
-            raise RuntimeError(
-                f"anchor mismatch in {os.path.basename(path)}: "
-                f"expected {expected} occurrence(s), found {count} — "
-                f"gplearn version not supported."
-            )
-        src = src.replace(old, new)
-
+def _write_atomic(path, src):
     tmp_path = path + ".prior_patch.tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(src)
     os.replace(tmp_path, path)
-    return True
+
+
+def _apply_ops(path, src, ops):
+    for old, new, expected in ops:
+        count = src.count(old)
+        if count != expected:
+            raise RuntimeError(
+                f"anchor mismatch in {os.path.basename(path)}: expected "
+                f"{expected} occurrence(s), found {count} — gplearn version "
+                f"not supported."
+            )
+        src = src.replace(old, new)
+    _write_atomic(path, src)
 
 
 def ensure_gplearn_feature_prior_patch() -> bool:
     """
-    Patch the installed gplearn on disk (idempotent) and reload its modules
-    in this process so the patch takes effect immediately.
+    Patch the installed gplearn on disk (idempotent, self-upgrading) and
+    reload its modules in this process so the patch takes effect immediately.
 
     Returns True if the prior mechanism is available afterwards.
     """
@@ -153,26 +205,66 @@ def ensure_gplearn_feature_prior_patch() -> bool:
     program_py = os.path.join(pkg_dir, "_program.py")
     genetic_py = os.path.join(pkg_dir, "genetic.py")
 
-    already = _MARKER in open(program_py, encoding="utf-8").read()
     try:
-        changed = _patch_file(program_py, [
-            (_PROGRAM_HELPER_ANCHOR, _PROGRAM_HELPER_INSERT, 1),
-            (_TERMINAL_BLOCK_OLD,   _TERMINAL_BLOCK_NEW,     2),
-        ])
-        changed |= _patch_file(genetic_py, [
-            (_GENETIC_PARAMS_ANCHOR, _GENETIC_PARAMS_INSERT, 1),
-            (_EVOLVE_UNPACK_ANCHOR,  _EVOLVE_UNPACK_INSERT,  1),
-            (_EVOLVE_ATTACH_ANCHOR,  _EVOLVE_ATTACH_INSERT,  1),
-        ])
+        prog_src = _read(program_py)
+        gen_src = _read(genetic_py)
+
+        marker_present = _MARKER in prog_src or _MARKER in gen_src
+
+        if not marker_present:
+            # ── Fresh install on unpatched gplearn (v4) ─────────────────────
+            _apply_ops(program_py, prog_src, [
+                (_PROGRAM_HELPER_ANCHOR, _HELPER_LATEST,       1),
+                (_TERMINAL_BLOCK_ORIG,   _TERMINAL_BLOCK_V4,   2),
+            ])
+            _apply_ops(genetic_py, gen_src, [
+                (_GENETIC_PARAMS_ANCHOR, _GENETIC_PARAMS_INSERT, 1),
+                (_EVOLVE_UNPACK_ANCHOR,  _EVOLVE_UNPACK_V2,      1),
+                (_EVOLVE_ATTACH_ANCHOR,  _EVOLVE_ATTACH_INSERT,  1),
+            ])
+            logger.info("gplearn feature-prior patch v4 written to %s", pkg_dir)
+        else:
+            # ── Sequential in-place upgrade of older patch versions ────────
+            changed = False
+
+            # v1 → latest helper body (adds class-level fallback)
+            if _HELPER_V1_BODY in prog_src:
+                _apply_ops(program_py, _read(program_py), [
+                    (_HELPER_V1_BODY, _HELPER_V2_BODY, 1),
+                ])
+                changed = True
+
+            # v1 → v2 unpack (adds class-level fallback assignment)
+            if ("_Program._class_feature_proba_" not in gen_src
+                    and "_feature_proba_ = params.get('_feature_proba', None)\n" in gen_src):
+                _apply_ops(genetic_py, _read(genetic_py), [
+                    ("    # FEATURE-PRIOR PATCH: unpack the feature prior (may be None).\n"
+                     "    _feature_proba_ = params.get('_feature_proba', None)\n",
+                     _EVOLVE_UNPACK_V2, 1),
+                ])
+                changed = True
+
+            # v2/v3 → v4 terminal block (const_range branch now prior-aware)
+            cur_prog = _read(program_py)
+            if _TERMINAL_BLOCK_V2 in cur_prog:
+                _apply_ops(program_py, cur_prog, [
+                    (_TERMINAL_BLOCK_V2, _TERMINAL_BLOCK_V4, 2),
+                ])
+                changed = True
+            elif _TERMINAL_BLOCK_V3 in cur_prog:
+                _apply_ops(program_py, cur_prog, [
+                    (_TERMINAL_BLOCK_V3, _TERMINAL_BLOCK_V4, 2),
+                ])
+                changed = True
+
+            if changed:
+                logger.info("gplearn feature-prior patch upgraded in place.")
     except Exception as exc:
         logger.warning(
             "Could not apply gplearn feature-prior patch (%s). The feature "
             "prior will remain a no-op (uniform terminal sampling).", exc
         )
         return False
-
-    if changed and not already:
-        logger.info("gplearn feature-prior patch written to %s", pkg_dir)
 
     # Reload so the current process picks up the patched code. Order matters:
     # genetic imports _program, so reload the leaf first.
@@ -184,7 +276,4 @@ def ensure_gplearn_feature_prior_patch() -> bool:
                        "activate the feature prior.", exc)
         return False
 
-    # Re-export the refreshed classes for anyone that imported us first.
-    sys.modules["gplearn.genetic"] = genetic
-    sys.modules["gplearn._program"] = _program
     return True

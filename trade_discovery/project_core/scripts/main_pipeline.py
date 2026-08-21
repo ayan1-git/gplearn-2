@@ -59,6 +59,9 @@ OOS_MAX_DRAWDOWN = getattr(cfg, 'OOS_MAX_DRAWDOWN', 25.0)
 OOS_MIN_PROFIT_FACTOR = getattr(cfg, 'OOS_MIN_PROFIT_FACTOR', 1.1)
 OOS_MIN_COVERAGE_PCT = getattr(cfg, 'OOS_MIN_COVERAGE_PCT', 15.0)
 MIN_HOLDOUT_TRADES   = getattr(cfg, 'MIN_OOS_TRADES', 30)
+# FIX #7: relaxed drawdown gate for very high Sharpe strategies
+OOS_MAX_DRAWDOWN_HIGH_SHARPE = getattr(cfg, 'OOS_MAX_DRAWDOWN_HIGH_SHARPE', 35.0)
+HIGH_SHARPE_THRESHOLD        = getattr(cfg, 'HIGH_SHARPE_THRESHOLD', 3.5)
 
 # GEL-SPECIFIC CONFIG ──────────────────────────────────────────────────────
 # Add these keys to src/config.py to tune them; defaults are applied below.
@@ -96,6 +99,12 @@ from trade_discovery.Audit_scripts.regime_classifier    import classify_regime
 
 # ── HELPERS ──────────────────────────────────────────────────────────────────
 
+import re
+
+_FEATURE_NAME_SET = frozenset(PASSTHROUGH_FEATURES + SCALE_FEATURES)
+_FORMULA_IDENT_RE = re.compile(r'\b[A-Za-z_][A-Za-z0-9_]*\b')
+
+
 def _safe_stat(stats, key: str, default: float = 0.0) -> float:
     """Compatible with pd.Series (vectorbt) and dict."""
     try:
@@ -107,10 +116,70 @@ def _safe_stat(stats, key: str, default: float = 0.0) -> float:
 
 
 def _features_used(formula_str: str) -> tuple:
-    return tuple(sorted({
-        f for f in PASSTHROUGH_FEATURES + SCALE_FEATURES
-        if f in formula_str
-    }))
+    # FIX #5: tokenized identifier matching. The old substring test
+    # (`f in formula_str`) produced phantom features because feature names are
+    # substrings of each other — e.g. 'talib_adx' matched inside 'talib_adxr',
+    # 'talib_roc' inside 'talib_rocp'/'talib_rocr'/'talib_rocr100'. That
+    # inflated the MIN_FEATURES_IN_FORMULA guard count and credited/penalised
+    # features in the win/loss feedback tallies that the formula never used.
+    return tuple(sorted(set(_FORMULA_IDENT_RE.findall(formula_str)) & _FEATURE_NAME_SET))
+
+
+def _find_trivial_cancellation(formula_str: str) -> bool:
+    # FIX #12: depth-aware trivial-cancellation detector. The old regexes
+    # (sub\((\w+),\s*\1\) etc.) only caught single bare terminals; nested
+    # duplicates like sub(add(a,b), add(a,b)) or add(X, neg(sub(a, b)))
+    # slipped through. This scans every sub()/add() call at any depth and
+    # compares its top-level argument subtrees as strings.
+    s = formula_str.replace(" ", "")
+
+    def _split_args(text: str, open_paren: int) -> List[str]:
+        """Split top-level comma-separated args of the call whose '(' is at
+        open_paren. Returns [] on unbalanced input."""
+        depth = 0
+        args, cur = [], []
+        i = open_paren
+        while i < len(text):
+            ch = text[i]
+            if ch == '(':
+                depth += 1
+                if depth > 1:
+                    cur.append(ch)
+            elif ch == ')':
+                depth -= 1
+                if depth == 0:
+                    if cur:
+                        args.append(''.join(cur))
+                    return args
+                cur.append(ch)
+            elif ch == ',' and depth == 1:
+                args.append(''.join(cur))
+                cur = []
+            else:
+                cur.append(ch)
+            i += 1
+        return []
+
+    for fn in ("sub", "add"):
+        search_from = 0
+        while True:
+            i = s.find(fn + "(", search_from)
+            if i < 0:
+                break
+            args = _split_args(s, i + len(fn))
+            search_from = i + len(fn) + 1
+            if len(args) != 2:
+                continue
+            a, b = args
+            if fn == "add":
+                # add(X,X) is just 2X (not degenerate) — only add(X, neg(X))
+                # cancels to zero. Require the neg wrapper before comparing.
+                if not (b.startswith("neg(") and b.endswith(")")):
+                    continue
+                b = b[len("neg("):-1]
+            if a == b:
+                return True
+    return False
 
 
 def _count_formula_features(formula_str: str) -> int:
@@ -219,11 +288,20 @@ def load_and_prepare_data(filepath: str):
         atr_period=cfg.ATR_PERIOD,
         drop_both_sl=getattr(cfg, "DROP_WHIPSAW", True),
         drop_neutral=getattr(cfg, "DROP_NEUTRAL", False),
+        # FIX #8: BOTH_TP events (both TP barriers hit on the same bar) are
+        # directionally ambiguous — with symmetric wicks they are ~50/50 long/
+        # short. Hardcoding +1 baked a systematic long bias into the labels and
+        # the fitness function's direction score. Excluded rows get target=-99
+        # and are dropped by the existing whipsaw mask.
+        exclude_both_tp=getattr(cfg, "DROP_BOTH_TP", True),
     )
     logger.info("Final aligned dataset: %d features, %d targets",
                 len(df_features), len(y_targets))
 
-    df_raw = df_raw.loc[df_features.index].astype(np.float32)
+    # FIX #11: keep raw OHLC in float64 for backtest accounting. float32 at
+    # NIFTY price levels (~25,000) has ~0.002 absolute resolution, which is
+    # fine for features but degrades VectorBT fill/PnL precision.
+    df_raw = df_raw.loc[df_features.index]
     return df_raw, df_features, y_targets
 
 
@@ -338,11 +416,9 @@ def _check_formula_structure(formula_str: str, program_len: int, gen: int) -> bo
     Returns True if formula passes all structural guards:
     - Min distinct features used
     - Max program length (bloat)
-    - No trivial cancellation: sub(X,X) or add(X,neg(X))
+    - No trivial cancellation: sub(X,X) or add(X,neg(X)) at any nesting depth
     - Not boolean-heavy (>60% comparison/logic ops)
     """
-    import re
-
     n_features_used = len(_features_used(formula_str))
 
     if n_features_used < MIN_FEATURES:
@@ -355,7 +431,7 @@ def _check_formula_structure(formula_str: str, program_len: int, gen: int) -> bo
                        gen, program_len, MAX_PROG_LEN)
         return False
 
-    if re.findall(r'sub\((\w+),\s*\1\)', formula_str) or        re.findall(r'add\((\w+),\s*neg\(\1\)\)', formula_str):
+    if _find_trivial_cancellation(formula_str):
         logger.warning("[Gen %d] Trivial cancellation (sub(X,X)/add(X,neg(X))). Skipping: %s",
                        gen, formula_str[:120])
         return False
@@ -523,7 +599,11 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             )
         except Exception as exc:
             logger.error("[Gen %d] GP training crashed: %s", gen, exc, exc_info=True)
-            elite_pool = []
+            # FIX #9: keep the accumulated elite pool instead of wiping it.
+            # One bad generation must not destroy every validated lineage.
+            if elite_pool:
+                logger.warning("[Gen %d] Retaining existing elite pool "
+                               "(%d programs) for next generation.", gen, len(elite_pool))
             continue
 
         if gp is None:
@@ -666,9 +746,19 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             logger.info("[Gen %d] FAIL — Sharpe=%.2f ≤ floor=%.2f",
                         gen, sharpe, OOS_MIN_SHARPE)
             oos_evaluated = True
-        elif max_dd >= cfg.OOS_MAX_DRAWDOWN:
-            logger.info("[Gen %d] FAIL — DD=%.2f%% ≥ max=%.2f%%",
-                        gen, max_dd, cfg.OOS_MAX_DRAWDOWN)
+        # FIX #7: wire up the previously-dead relaxed drawdown gate. Above
+        # HIGH_SHARPE_THRESHOLD a strategy is allowed OOS_MAX_DRAWDOWN_HIGH_SHARPE
+        # instead of the standard OOS_MAX_DRAWDOWN (these keys existed in
+        # config.py but were never referenced by the survivor gate).
+        elif max_dd >= (OOS_MAX_DRAWDOWN_HIGH_SHARPE
+                        if sharpe > HIGH_SHARPE_THRESHOLD
+                        else OOS_MAX_DRAWDOWN):
+            _dd_gate = (OOS_MAX_DRAWDOWN_HIGH_SHARPE
+                        if sharpe > HIGH_SHARPE_THRESHOLD
+                        else OOS_MAX_DRAWDOWN)
+            logger.info("[Gen %d] FAIL — DD=%.2f%% ≥ max=%.2f%% (%s gate)",
+                        gen, max_dd, _dd_gate,
+                        "high-Sharpe" if _dd_gate != OOS_MAX_DRAWDOWN else "standard")
             oos_evaluated = True
         elif profit_fac < OOS_MIN_PROFIT_FACTOR:
             logger.info("[Gen %d] FAIL — PF=%.2f < min=%.2f",

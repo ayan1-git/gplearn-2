@@ -13,6 +13,10 @@ SL_ATR_MULT     = 1.9
 ATR_PERIOD      = 20
 DROP_NEUTRAL    = True    # If True, rows with target=0 are removed from training
 DROP_WHIPSAW    = True    # If True, rows with target=-99 (Both-SL) are removed
+# FIX #8: exclude BOTH_TP rows (both TP barriers hit within one bar). These
+# are directionally ambiguous (~50/50 with symmetric wicks); the legacy
+# behaviour of hardcoding +1 injected a long bias into the labels.
+DROP_BOTH_TP    = True
 
 # ── EXECUTION FRICTION ────────────────────────────────────────────────────
 FEE_PER_SIDE = 0.0003
@@ -32,7 +36,6 @@ WFO_STEP_MONTHS = 1
 # ── GP ENGINE ─────────────────────────────────────────────────────────────
 GP_POPULATION_SIZE = 3000
 GP_GENERATIONS     = 60        # total  — must equal sum of all 3 phases
-GP_TOURNAMENT_SIZE = 7
 GP_INIT_DEPTH_MIN  = 4
 GP_INIT_DEPTH_MAX  = 8
 GP_SEED_FRACTION   = 0.20
@@ -106,9 +109,11 @@ MIN_OOS_TRADES               = 30     # reject strategies with insufficient OOS 
 OOS_MIN_PROFIT_FACTOR         = 1.1   # minimum profit factor to survive
 OOS_MIN_COVERAGE_PCT          = 15.0  # minimum executable coverage % to survive
 
-# ── PROBABILISTIC SEED DECAY ──────────────────────────────────────────────
-SEED_SOFT_THRESHOLD_SHARPE = 0.5   # keep seeds if Sharpe ≥ 0.5 × OOS_MIN_SHARPE
-SEED_DECAY_FRACTION        = 0.50  # retain only top 50% of elites when soft-passing
+# (FIX #7 cleanup) removed dead keys: SEED_SOFT_THRESHOLD_SHARPE,
+# SEED_DECAY_FRACTION, GP_TOURNAMENT_SIZE, ROTATION_FEATURE, GP_RESTARTS,
+# IMBALANCE_LAMBDA, ACTIVITY_FLOOR, ACTIVITY_LAMBDA, MIN_LONG, MIN_SHORT —
+# none were referenced anywhere in the codebase. The relaxed high-Sharpe DD
+# gate keys above ARE now wired into main_pipeline's survivor gate.
 
 # ── FEATURE ENGINEERING (ENGINE) ──────────────────────────────────────────
 OB_ATR_MULT        = 0.5
@@ -139,9 +144,6 @@ ADX_TREND_THRESH    = 25.0
 CHOP_TREND_THRESH   = 38.2
 CHOP_CHOPPY_THRESH  = 61.8
 CHOP_PERIOD         = 28
-
-# ── PIPELINE ROTATION ─────────────────────────────────────────────────────
-ROTATION_FEATURE = "feat_vol_asymmetry"
 
 # ── REGIME HYPERPARAMETERS ───────────────────────────────────────────────
 REGIME_HP: dict = {
@@ -208,15 +210,7 @@ SESSION_OPEN = "09:15"
 SESSION_CLOSE = "15:30"
 SESSION_TZ = "Asia/Kolkata"
 
-MIN_LONG     = 75
-MIN_SHORT    = 75
-MIN_TRADES   = 180
-
-# ── OPTIONAL / FUTURE ─────────────────────────────────────────────────────
-GP_RESTARTS      = 3
-IMBALANCE_LAMBDA = 2.0
-ACTIVITY_FLOOR   = 0.08
-ACTIVITY_LAMBDA  = 0.5
+MIN_TRADES   = 180   # referenced by Audit_scripts leaderboards — kept
 
 # ── TALIB FEATURE EXPANSION ───────────────────────────────────────────────────
 USE_TALIB_FEATURES = True   # set False to skip without touching feature_engineering.py

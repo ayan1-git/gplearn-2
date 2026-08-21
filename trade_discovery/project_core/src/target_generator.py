@@ -77,6 +77,7 @@ def _compute_wilder_atr(df_raw: pd.DataFrame, period: int = 14) -> pd.Series:
 def run_first_touch_triple_barrier(
     open_arr, high_arr, low_arr, close_arr,
     atr_arr, max_hold, tp_mult, sl_mult,
+    exclude_both_tp,
 ):
     """
     Strict first-touch asymmetric triple-barrier labeling.
@@ -88,11 +89,16 @@ def run_first_touch_triple_barrier(
     BUG-5 FIX: Both-SL exit price is set to the first SL barrier touched,
     not entry_price.
 
+    FIX #8: When exclude_both_tp=True, BOTH_TP events (both TP barriers hit
+    within the same bar) are labelled -99 instead of +1. These events are
+    directionally ambiguous (~50/50 with symmetric wicks), so hardcoding +1
+    injected a systematic long bias into the training labels.
+
     Labels:
       +1.0  → Long TP first
       -1.0  → Short TP first
-       0.0  → Timeout / ambiguous / SL-only events
-     -99.0  → Wide-candle (single-bar Both-SL) — exclude from training
+        0.0  → Timeout / ambiguous / SL-only events
+      -99.0  → Wide-candle / Both-SL / Both-TP (excluded from training)
     """
     n = len(close_arr)
 
@@ -202,10 +208,13 @@ def run_first_touch_triple_barrier(
 
         elif res_l == 1 and res_s == 1:
             # Both TP levels hit on the same bar: asymmetric barrier breakout.
-            # Label as Long (+1.0): with TP > SL in absolute terms (2.4 vs 1.9),
-            # an event where both TPs trigger is a high-volatility long breakout
-            # that the short TP level is also reached due to bar wick symmetry.
-            targets[i]        = np.float32(1.0)
+            # FIX #8: directionally ambiguous (~50/50 with symmetric wicks).
+            # When exclude_both_tp=True label as -99 so the pipeline drops
+            # these rows; otherwise fall back to the legacy Long (+1) label.
+            if exclude_both_tp:
+                targets[i]        = np.float32(-99.0)
+            else:
+                targets[i]        = np.float32(1.0)
             event_type[i]     = EVENT_BOTH_TP
             event_bar[i]      = min(res_l_bar, res_s_bar) if res_l_bar >= 0 and res_s_bar >= 0 else -1
 
@@ -267,6 +276,7 @@ def generate_tbm_targets(
     drop_invalid: bool      = True,
     drop_both_sl: bool      = True,    # Filter out -99
     drop_neutral: bool      = False,   # New: filter out 0.0
+    exclude_both_tp: bool   = False,   # FIX #8: exclude BOTH_TP rows (-99)
     return_metadata: bool   = False,
 ):
     if max_hold <= 0:        raise ValueError("max_hold must be > 0")
@@ -302,6 +312,7 @@ def generate_tbm_targets(
         np.int64(max_hold),
         np.float32(tp_mult),
         np.float32(sl_mult),
+        bool(exclude_both_tp),
     )
 
     meta = pd.DataFrame({
@@ -335,12 +346,15 @@ def generate_tbm_targets(
         df_features_aligned = df_features_aligned.loc[keep_mask]
         meta_aligned        = meta_aligned.loc[keep_mask]
 
-    # BUG-1/4 FIX: Drop Both-SL and Wide-Candle rows (-99) from training
+    # BUG-1/4 FIX: Drop Both-SL and Wide-Candle rows (-99) from training.
+    # FIX #8: also covers BOTH_TP rows when exclude_both_tp=True (same -99
+    # sentinel, dropped by this mask).
     if drop_both_sl:
         whipsaw_mask        = meta_aligned["target"] != -99.0
         n_whipsaw_dropped   = int((~whipsaw_mask).sum())
         if n_whipsaw_dropped > 0:
-            print(f"  Dropping whipsaw rows (Both-SL + Wide-Candle): {n_whipsaw_dropped}")
+            print(f"  Dropping excluded rows (-99: Both-SL + Wide-Candle"
+                  f"{' + Both-TP' if exclude_both_tp else ''}): {n_whipsaw_dropped}")
         df_features_aligned = df_features_aligned.loc[whipsaw_mask]
         meta_aligned        = meta_aligned.loc[whipsaw_mask]
 

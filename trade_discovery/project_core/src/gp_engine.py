@@ -505,7 +505,9 @@ def _apply_feature_proba(
     forward `self._feature_proba` to worker processes via the params dict and
     makes _Program terminal sampling (build_program / point_mutation /
     subtree_mutation) draw variable terminals from that distribution instead
-    of uniformly. Without the patch this attribute is inert.
+    of uniformly. The patch also installs the prior as a class-level fallback
+    so generation-0 programs honour it. Without the patch this attribute is
+    inert.
 
     IMPORTANT: call this immediately before EVERY est_gp.fit(), never before.
     """
