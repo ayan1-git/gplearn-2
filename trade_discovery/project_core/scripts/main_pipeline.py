@@ -18,16 +18,8 @@ import os
 import sys
 
 # ── Ensure `src/` is resolvable regardless of working directory ───────────────
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, PROJECT_ROOT)
-# Sibling packages that host shared modules after the restructure:
-#   vectorbt_evaluator.py / regime_classifier.py  → trade_discovery/Audit_scripts
-#   equity_stitcher.py                            → trade_discovery/project_secondary
-_discovery_root = os.path.dirname(PROJECT_ROOT)
-for _sibling in ("Audit_scripts", "project_secondary"):
-    _p = os.path.join(_discovery_root, _sibling)
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
 os.chdir(PROJECT_ROOT)  # ensures all relative paths (data/, outputs/) work
 # ──────────────────────────────────────────────────────────────────────────────
 from collections import Counter
@@ -94,8 +86,8 @@ from src.target_generator     import generate_tbm_targets
 from src.gp_engine            import (train_gp_model,
                                       extract_elite_programs,
                                       hash_formula)
-from vectorbt_evaluator       import evaluate_formula_with_vectorbt
-from regime_classifier        import classify_regime
+from trade_discovery.Audit_scripts.vectorbt_evaluator   import evaluate_formula_with_vectorbt
+from trade_discovery.Audit_scripts.regime_classifier    import classify_regime
 
 
 # ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -826,7 +818,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
 
     if winners:
         try:
-            from equity_stitcher import stitch_equity_curves
+            from trade_discovery.project_secondary.equity_stitcher import stitch_equity_curves
             equity_df = stitch_equity_curves(winners, output_dir="outputs")
             if equity_df is not None:
                 logger.info("Combined equity curve → outputs/combined_equity.parquet")

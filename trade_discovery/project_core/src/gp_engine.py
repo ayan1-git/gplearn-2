@@ -387,11 +387,7 @@ def _score_program_trade_fitness(program, X_train_s, df_raw_train,
     VectorBT pipeline as OOS evaluation.  Returns (sharpe, n_trades).
     """
     try:
-        try:
-            from src.vectorbt_evaluator import evaluate_formula_with_vectorbt
-        except ImportError:
-            # Post-restructure location: trade_discovery/Audit_scripts/
-            from vectorbt_evaluator import evaluate_formula_with_vectorbt
+        from trade_discovery.Audit_scripts.vectorbt_evaluator import evaluate_formula_with_vectorbt
 
         class _Wrapper:
             def predict(self_inner, X):

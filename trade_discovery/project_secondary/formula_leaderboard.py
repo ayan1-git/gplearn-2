@@ -13,14 +13,8 @@ import pandas as pd
 import sys
 
 # ── Ensure `src/` is resolvable regardless of working directory ───────────────
-# src/ lives in project_core/ after the restructure; regime_classifier lives in
-# trade_discovery/Audit_scripts/
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "project_core"))
+PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, PROJECT_ROOT)
-_discovery_root = os.path.dirname(PROJECT_ROOT)
-_audit_scripts = os.path.join(_discovery_root, "Audit_scripts")
-if _audit_scripts not in sys.path:
-    sys.path.insert(0, _audit_scripts)
 os.chdir(PROJECT_ROOT)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -402,7 +396,7 @@ def get_current_regime(data_path: Optional[str] = None) -> Optional[str]:
     Returns the regime string or None if data unavailable.
     """
     try:
-        from regime_classifier import classify_regime
+        from trade_discovery.Audit_scripts.regime_classifier import classify_regime
         import src.config as cfg
 
         dp = data_path or cfg.DATAPATH
