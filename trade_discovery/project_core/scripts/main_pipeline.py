@@ -582,7 +582,8 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             logger.info("[Gen %d] Feature prior — most rewarded: '%s' (decayed=%.1f)",
                         gen, top_feat, raw_counts.max())
         else:
-            logger.info("[Gen %d] Feature prior — uniform (no winners yet, alpha=%.1f)", gen, alpha)
+            logger.info("[Gen %d] Feature prior — uniform (net feedback zero: "
+                        "no wins recorded or all cancelled, alpha=%.1f)", gen, alpha)
 
         # ── GP Training ───────────────────────────────────────────────────────
         logger.info("[Gen %d] Training GP on %d rows | seeds: %d | regime: %s",
@@ -823,13 +824,27 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # contributes a "loss" signal for each of its features.  This prevents
         # the feature prior from only rewarding winners; it also actively
         # deprioritises features that keep appearing in losing formulas.
+        #
+        # FIX (live-run finding): features belonging to CURRENT LEADERBOARD
+        # WINNERS are exempt. Without this, a failed near-clone of a winner
+        # (seeded from it last gen) penalises the winner's own features and
+        # instantly cancels its boost: net = decayed_win − 0.5·loss < 0 →
+        # prior floored back to uniform even though a validated lineage exists
+        # (observed live: Gen2 win → Gen3 clone fail → Gen4 "uniform, no
+        # winners yet" despite 1/100 leaderboard).
         if oos_evaluated:
-            loser_feats = _features_used(formula_str)
+            winner_feats = set()
+            for w in winners:
+                winner_feats.update(_features_used(w['formula']))
+            formula_feats = _features_used(formula_str)
+            loser_feats = [f for f in formula_feats if f not in winner_feats]
+            skipped = len(formula_feats) - len(loser_feats)
             for feat in loser_feats:
                 feat_loss_counts[feat] += 1
             logger.info(
-                "[Gen %d] Loss feedback — %d features penalised for OOS failure",
-                gen, len(loser_feats)
+                "[Gen %d] Loss feedback — %d features penalised for OOS failure "
+                "(%d skipped: held by current winners)",
+                gen, len(loser_feats), skipped
             )
 
         # ── Build next-gen seed pool ─────────────────────────────────────────
