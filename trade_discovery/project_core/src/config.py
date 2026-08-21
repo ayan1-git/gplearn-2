@@ -3,7 +3,8 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "trade_discovery/project_core/data/NIFTY MID SELECT_60minute.csv"
+# Relative to project_core/ after the repo re-organization.
+DATAPATH = "data/NIFTY MID SELECT_60minute.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
 ORACLE_MAX_HOLD = 26

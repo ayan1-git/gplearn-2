@@ -5,6 +5,21 @@ import numpy as np
 import pandas as pd
 from gplearn.functions import make_function
 from gplearn.fitness import make_fitness
+
+# ── FIX #1: activate REAL feature-prior support in gplearn ───────────────────
+# Stock gplearn has no `_feature_proba` mechanism, so the prior stamped on the
+# estimator was silently ignored. This patches the installed gplearn source on
+# disk (idempotent, marker-guarded) and reloads its modules so terminal
+# sampling honours the prior. MUST run before SymbolicRegressor is bound below,
+# otherwise this process keeps using the pre-patch class objects.
+try:
+    from src.gplearn_prior_patch import ensure_gplearn_feature_prior_patch
+    FEATURE_PRIOR_ACTIVE = ensure_gplearn_feature_prior_patch()
+except Exception as _exc:                                    # pragma: no cover
+    FEATURE_PRIOR_ACTIVE = False
+    logging.getLogger(__name__).warning(
+        "Feature-prior patch could not be initialised: %s", _exc)
+
 from gplearn.genetic import SymbolicRegressor
 
 try:
@@ -362,8 +377,11 @@ def _create_random_programs(n_features: int, n_programs: int, fold: int) -> list
         verbose            = 0,
         random_state       = fold + 5000,
     )
-    X_dummy = np.random.randn(50, n_features).astype(np.float32)
-    y_dummy = np.random.randn(50).astype(np.float32)
+    # FIX #10: seed the dummy data too — the unseeded np.random call made runs
+    # non-reproducible even with identical configs.
+    dummy_rng = np.random.RandomState(fold + 6000)
+    X_dummy = dummy_rng.randn(50, n_features).astype(np.float32)
+    y_dummy = dummy_rng.randn(50).astype(np.float32)
     temp.fit(X_dummy, y_dummy)
 
     programs = []
@@ -481,12 +499,13 @@ def _apply_feature_proba(
     """
     Re-apply the feature sampling prior on `est_gp` before every fit() call.
 
-    WHY THIS IS NEEDED:
-    gplearn's fit() re-enters _fit() which rebuilds internal state from
-    scratch even when warm_start=True. Any attribute injected between fit()
-    calls (like _feature_proba) is silently overwritten. This helper stamps
-    the normalised probability vector on the live estimator object immediately
-    before each fit() so it is present during that call's terminal sampling.
+    HOW IT WORKS (FIX #1):
+    gplearn has no native feature-prior mechanism. The source patch installed
+    by src/gplearn_prior_patch.py (applied at module import) makes fit()
+    forward `self._feature_proba` to worker processes via the params dict and
+    makes _Program terminal sampling (build_program / point_mutation /
+    subtree_mutation) draw variable terminals from that distribution instead
+    of uniformly. Without the patch this attribute is inert.
 
     IMPORTANT: call this immediately before EVERY est_gp.fit(), never before.
     """
@@ -502,6 +521,10 @@ def _apply_feature_proba(
         logger.warning("[Fold %d] feature_proba sums to zero — skipping prior.", fold)
         return
     arr /= total
+    if not FEATURE_PRIOR_ACTIVE:
+        logger.warning(
+            "[Fold %d] feature prior set on estimator but the gplearn patch "
+            "is NOT active — it will be ignored (uniform sampling).", fold)
     est_gp._feature_proba = arr
     logger.debug("[Fold %d] _feature_proba applied — top: %s (p=%.4f)",
                  fold, feature_names[int(np.argmax(arr))], arr.max())
@@ -630,7 +653,7 @@ def train_gp_model(
         n_seeds  = min(len(seed_programs), int(SEED_FRACTION * POPULATION_SIZE))
         last_gen = est_gp._programs[-1]
         rng      = np.random.RandomState(fold + 1000)
-        logger.info("[Fold %d] Injecting %d seeds (+%d anti-conv) into Gen %d population.",
+        logger.info("[Fold %d] Injecting up to %d unique seeds (+%d anti-conv) into Gen %d population.",
                     fold, n_seeds, len(anti_conv_programs), PHASE1_GENS - 1)
 
         valid_pop   = [(i, p) for i, p in enumerate(last_gen)
@@ -646,13 +669,20 @@ def train_gp_model(
         seed_slot_count = n_total_slots - n_random_slots
         seed_idx   = 0
         random_idx = 0
+        n_seeds_placed = 0
         n_rand_placed   = 0
 
         for slot_rank, (pop_idx, _) in enumerate(worst_slots[:n_total_slots]):
-            if slot_rank < seed_slot_count:
-                seed = copy.deepcopy(seed_programs[seed_idx % len(seed_programs)])
+            if slot_rank < seed_slot_count and seed_idx < len(seed_programs):
+                # FIX #6: each seed is injected EXACTLY ONCE. The old
+                # `seed_idx % len(seed_programs)` cycling replicated every
+                # winner ~3x across the population (600 slots vs ~200 seeds),
+                # bypassing MAX_WINNER_SEED_FRACTION and feeding the
+                # equivalent-winner permutation loop.
+                seed = copy.deepcopy(seed_programs[seed_idx])
                 seed_idx += 1
-            else:
+                n_seeds_placed += 1
+            elif random_idx < len(anti_conv_programs):
                 seed = copy.deepcopy(anti_conv_programs[random_idx])
                 random_idx += 1
                 n_rand_placed += 1
@@ -668,6 +698,10 @@ def train_gp_model(
                             idx = rng.randint(0, len(seed.program))
                             if isinstance(seed.program[idx], (int, np.integer)):
                                 seed.program[idx] = rng.randint(0, n_features)
+            else:
+                # Seeds and anti-conv randoms exhausted — leave the incumbent
+                # program in this slot untouched instead of duplicating seeds.
+                continue
             if hasattr(seed, 'program'):
                 seed.n_features = n_features
                 for i in range(len(seed.program)):
@@ -675,6 +709,9 @@ def train_gp_model(
                         if seed.program[i] >= n_features:
                             seed.program[i] = rng.randint(0, n_features)
             last_gen[pop_idx] = seed
+        logger.info("[Fold %d] Injected %d unique seeds + %d anti-conv randoms "
+                    "(%d slots offered).",
+                    fold, n_seeds_placed, n_rand_placed, n_total_slots)
 
         n_corrupted = 0
         for i, p in enumerate(last_gen):

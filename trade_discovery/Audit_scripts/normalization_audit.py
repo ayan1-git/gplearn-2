@@ -31,10 +31,15 @@ from __future__ import annotations
 import os
 import sys
 
-# ── Ensure `src/` is resolvable regardless of working directory ─────────────────
-# src/ lives in project_core/ after the restructure
-PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "project_core")
-sys.path.insert(0, PROJECT_ROOT)
+# ── Resolve imports regardless of where this script is launched from ─────────
+# After the project restructure, both project_core/ and the parent workspace root
+# must be on sys.path so imports such as `src...` and `trade_discovery...` work.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "project_core"))
+TRADE_DISCOVERY_ROOT = os.path.abspath(os.path.join(PROJECT_ROOT, ".."))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(TRADE_DISCOVERY_ROOT, ".."))
+for candidate in (PROJECT_ROOT, TRADE_DISCOVERY_ROOT, WORKSPACE_ROOT):
+    if candidate and candidate not in sys.path:
+        sys.path.insert(0, candidate)
 os.chdir(PROJECT_ROOT)
 # ──────────────────────────────────────────────────────────────────────────────
 

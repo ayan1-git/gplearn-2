@@ -17,9 +17,13 @@ import logging
 import os
 import sys
 
-# ── Ensure `src/` is resolvable regardless of working directory ───────────────
-PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-sys.path.insert(0, PROJECT_ROOT)
+# ── Ensure project paths are resolvable regardless of working directory ───────
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+TRADE_DISCOVERY_ROOT = os.path.abspath(os.path.join(PROJECT_ROOT, ".."))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(TRADE_DISCOVERY_ROOT, ".."))
+for candidate in (PROJECT_ROOT, TRADE_DISCOVERY_ROOT, WORKSPACE_ROOT):
+    if candidate and candidate not in sys.path:
+        sys.path.insert(0, candidate)
 os.chdir(PROJECT_ROOT)  # ensures all relative paths (data/, outputs/) work
 # ──────────────────────────────────────────────────────────────────────────────
 from collections import Counter
@@ -157,8 +161,24 @@ def setup_directories() -> None:
 # ── DATA LOADING ─────────────────────────────────────────────────────────────
 
 def load_and_prepare_data(filepath: str):
-    logger.info("Loading raw data from %s", filepath)
-    df_raw = pd.read_csv(filepath)
+    resolved_path = filepath
+    candidates = []
+    if filepath:
+        candidates.append(filepath)
+        if not os.path.isabs(filepath):
+            candidates.extend([
+                os.path.join(PROJECT_ROOT, filepath),
+                os.path.join(TRADE_DISCOVERY_ROOT, filepath),
+                os.path.join(WORKSPACE_ROOT, filepath),
+            ])
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            resolved_path = candidate
+            break
+    if not os.path.exists(resolved_path):
+        raise FileNotFoundError(f"Data file not found at any candidate path: {candidates}")
+    logger.info("Loading raw data from %s", resolved_path)
+    df_raw = pd.read_csv(resolved_path)
     df_raw.columns = [col.lower() for col in df_raw.columns]
 
     if 'datetime' in df_raw.columns:
