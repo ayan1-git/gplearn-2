@@ -76,10 +76,13 @@ MAX_SEED_DUPLICATES   = getattr(cfg, 'GEL_MAX_SEED_DUPLICATES',  2)
 DIVERSITY_FRACTION    = getattr(cfg, 'GEL_DIVERSITY_FRACTION',   0.50)
 FEATURE_PRIOR_DECAY   = getattr(cfg, 'GEL_FEATURE_PRIOR_DECAY',  0.40)
 FEATURE_LOSS_PENALTY  = getattr(cfg, 'GEL_FEATURE_LOSS_PENALTY', 0.50)
-WIN_DECAY_PER_GEN     = getattr(cfg, 'GEL_WIN_DECAY_PER_GEN',    0.70)
 PRIOR_MAX_CONCENTRATION = getattr(cfg, 'GEL_PRIOR_MAX_CONCENTRATION', 1.8)
 MAX_WINNER_SEED_FRACTION = getattr(cfg, 'GEL_MAX_WINNER_SEED_FRACTION', 0.40)
 SIG_STALE_RESET_GENS  = getattr(cfg, 'GEL_SIG_STALE_RESET_GENS',  2)
+# FIX: nuke the seed pool when the same FAILING OOS signature appears this
+# many times (non-consecutive equivalents included). (WIN_DECAY_PER_GEN was
+# removed — win support is now rebuilt from the leaderboard each generation.)
+SIG_REPEAT_RESET      = getattr(cfg, 'GEL_SIG_REPEAT_RESET',     3)
 
 # Phase-2 anti-convergence: inject fresh random programs into seed pool
 ANTI_CONVERGENCE_FRACTION = getattr(cfg, 'GEL_ANTI_CONVERGENCE_FRACTION', 0.10)
@@ -518,6 +521,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
     winners:       List    = []
     seen_hashes:   set     = set()
     winner_signatures: set = set()   # collapse math-equivalent winners (same OOS backtest)
+    oos_sig_counts : Counter = Counter()  # FIX: global repeat tracking across ALL evals
     feat_win_counts        = Counter()
     feat_loss_counts       = Counter()   # Phase-1.5: negative feature feedback
     gen_meta_rows: List    = []
@@ -544,17 +548,19 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         all_feats  = list(X_train_s.columns)
         alpha      = cfg.GP_FEATURE_PRIOR_ALPHA
 
-        # ── Break the win-tally ratchet ───────────────────────────────────────
-        # A feature that appears in EVERY winner (e.g. feat_icp) would otherwise
-        # accumulate win counts without bound, permanently pinning the prior at
-        # its concentration cap and starving all other features. Decaying the
-        # win tallies each generation makes old wins fade, so a feature must keep
-        # winning to retain prior mass. Steady-state tally ≈ 1/(1-decay), which
-        # is bounded (e.g. ≈3.3 at decay=0.7) instead of climbing to ∞.
-        for _f in list(feat_win_counts.keys()):
-            feat_win_counts[_f] *= WIN_DECAY_PER_GEN
-            if feat_win_counts[_f] < 0.1:
-                del feat_win_counts[_f]
+        # ── Leaderboard-anchored win support (FIX: prior decayed to zero) ─────
+        # Rebuild win support from the CURRENT leaderboard every generation.
+        # The old tally+decay scheme bled a single winner's mass to zero within
+        # ~6 generations (0.7^k per-gen decay × 0.4 scaling), leaving the
+        # search unguided while a validated strategy still existed (observed
+        # live: winner at Gen 2 → "uniform" from Gen 8 despite 1/100 board).
+        # Rebuilding is self-bounding — the leaderboard is capped at
+        # ELITE_POOL_SIZE, so no ratchet and no decay-to-zero; eviction of old
+        # winners handles staleness naturally.
+        feat_win_counts = Counter()
+        for _w in winners:
+            for _f in _features_used(_w['formula']):
+                feat_win_counts[_f] += 1.0
 
         # Balanced feedback: wins add, losses subtract (with penalty weight)
         net_scores = np.array(
@@ -564,7 +570,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         )
         net_scores = np.maximum(net_scores, 0.0)  # floor at zero
 
-        # Exponential decay to prevent positive-feedback lock-in on early winners
+        # Scale down so alpha=5 smoothing stays meaningful vs 174 features
         raw_counts = net_scores * FEATURE_PRIOR_DECAY
         feat_proba = (raw_counts + alpha) / (raw_counts + alpha).sum()
 
@@ -698,6 +704,12 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
         # rounded performance signature, and use repeats to drive a stale-break.
         oos_sig = (round(total_ret, 2), round(sharpe, 2),
                    round(profit_fac, 2), n_trades)
+        # FIX: count EVERY evaluation's signature (not just winners'). Gens
+        # 4/5/10/12 of the live run produced the IDENTICAL failing backtest
+        # (2.79%/Sharpe 2.92) from different formula strings — scattered
+        # duplicates the consecutive-only sig-stale check cannot see. Each
+        # wasted ~5 min of holdout evaluation.
+        oos_sig_counts[oos_sig] += 1
 
         if oos_sig == _last_sig:
             _sig_stale_count += 1
@@ -713,17 +725,13 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             )
             if _sig_stale_count >= SIG_STALE_RESET_GENS:
                 logger.warning(
-                    "[Gen %d] SIGNATURE-STALE — nuking elite pool + decaying "
-                    "prior to force exploration off the equivalent-winner cluster.",
+                    "[Gen %d] SIGNATURE-STALE — nuking elite pool to force "
+                    "exploration off the equivalent-winner cluster.",
                     gen
                 )
                 elite_pool = []
                 _sig_stale_count = 0
                 _last_sig = None
-                for _k in list(feat_win_counts.keys()):
-                    feat_win_counts[_k] *= 0.3
-                    if feat_win_counts[_k] < 0.1:
-                        del feat_win_counts[_k]
             else:
                 elite_pool = extract_elite_programs(
                     gp, top_n=SEEDS_PER_GEN,
@@ -847,6 +855,19 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 gen, len(loser_feats), skipped
             )
 
+            # FIX (live-run finding): non-consecutive duplicate failures. When
+            # the SAME failing OOS signature keeps re-appearing (different
+            # formula strings, identical trades), the lineage is stuck in an
+            # equivalent-formula loop. Nuke the seed pool to force exploration.
+            if oos_sig_counts[oos_sig] >= SIG_REPEAT_RESET:
+                logger.warning(
+                    "[Gen %d] SIGNATURE-REPEAT — failing signature %s seen %d "
+                    "times. Nuking elite pool to break the equivalent-formula "
+                    "loop.", gen, oos_sig, oos_sig_counts[oos_sig]
+                )
+                elite_pool = []
+                feat_loss_counts.clear()
+
         # ── Build next-gen seed pool ─────────────────────────────────────────
         # P1: The holdout must drive evolution. Once we have OOS survivors
         # (winners), seed the next generation PRIMARILY from them, padding the
@@ -908,11 +929,10 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             elite_pool = []
             _stale_count = 0
             _last_best_hash = None
-            # Also decay feature prior harder to break the attractor
-            for k in list(feat_win_counts.keys()):
-                feat_win_counts[k] *= 0.3
-                if feat_win_counts[k] < 0.1:
-                    del feat_win_counts[k]
+            # Decay loss tallies to break the attractor. (Win support is now
+            # rebuilt from the leaderboard each generation, so decaying it
+            # here would be overwritten — exploration pressure comes from the
+            # emptied seed pool instead.)
             for k in list(feat_loss_counts.keys()):
                 feat_loss_counts[k] = int(feat_loss_counts[k] * 0.3)
                 if feat_loss_counts[k] <= 0:

@@ -55,11 +55,11 @@ GEL_MIN_HOLDOUT_TRADES = 30
 GEL_STALE_RESET_GENS      = 2      # cold-restart elite pool if best unchanged N gens
 GEL_MAX_SEED_DUPLICATES   = 2      # max copies of same formula string in elite pool
 GEL_DIVERSITY_FRACTION    = 0.50   # fraction of elite pool reserved for diverse programs
-GEL_FEATURE_PRIOR_DECAY   = 0.40   # exponential decay on feat_win_counts each gen
+GEL_FEATURE_PRIOR_DECAY   = 0.40   # scale on net win/loss scores before alpha smoothing
 GEL_FEATURE_LOSS_PENALTY  = 0.50   # weight applied to feat_loss_counts vs feat_win_counts
-GEL_WIN_DECAY_PER_GEN     = 0.70   # per-gen multiplicative decay on feat_win_counts (breaks
-                                   # the one-way ratchet where a feature in every winner
-                                   # accumulates unbounded prior mass, e.g. feat_icp)
+# (GEL_WIN_DECAY_PER_GEN removed: win support is now rebuilt from the live
+#  leaderboard every generation — the old tally+decay scheme bled a single
+#  winner's prior mass to zero within ~6 gens, unguiding the search.)
 GEL_PRIOR_MAX_CONCENTRATION = 1.8  # cap single-feature prior mass at Nx the uniform baseline
                                    # (was 3.0 — too permissive, let one feature dominate)
 GEL_MAX_WINNER_SEED_FRACTION = 0.40  # max fraction of the seed pool taken by winner programs.
@@ -68,6 +68,9 @@ GEL_MAX_WINNER_SEED_FRACTION = 0.40  # max fraction of the seed pool taken by wi
                                      # the GP re-derive math-equivalent permutations forever).
 GEL_SIG_STALE_RESET_GENS  = 2      # nuke pool if N consecutive gens produce the SAME OOS
                                    # performance signature (equivalent-winner permutation loop)
+GEL_SIG_REPEAT_RESET      = 3      # nuke pool when the same FAILING OOS signature has been
+                                   # seen this many times in total (catches non-consecutive
+                                   # equivalent-formula loops that waste a full eval each)
 
 # 3-Phase schedule — MUST sum to GP_GENERATIONS
 GP_PHASE1_GENS = 15

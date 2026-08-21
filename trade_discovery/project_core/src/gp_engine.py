@@ -301,7 +301,6 @@ def extract_elite_programs(
     # ── Diversity-aware selection ─────────────────────────────────────────
     n_fitness = max(1, int(top_n * (1 - diversity_fraction)))
     selected_indices = list(range(n_fitness))
-    selected_set     = set(selected_indices)
 
     # Trigram sets for Jaccard distance
     def _trigrams(s):
@@ -311,36 +310,55 @@ def extract_elite_programs(
 
     all_tg = [_trigrams(s) for _, _, s in deduped]
 
-    # Greedy farthest-first fill
+    # ── Greedy farthest-first fill (incremental min-distance form) ─────────
+    # FIX (live-run finding): the naive loop recomputed each candidate's
+    # distance to EVERY selected program on EVERY slot (O(slots × remaining ×
+    # selected) ≈ 20M Jaccard ops → 4–6 min per generation as the pool grew).
+    # Farthest-first only ever needs min(dist(candidate, NEW selection)):
+    # min-dist to the selected set can only decrease when a new point is
+    # added, so we maintain it incrementally. IDENTICAL selection, ~50x less
+    # work.
     n_diverse  = top_n - n_fitness
     remaining  = set(range(n_fitness, len(deduped)))
+
+    def _jaccard_dist(i, j):
+        inter = len(all_tg[i] & all_tg[j])
+        union = len(all_tg[i] | all_tg[j])
+        return 1.0 - (inter / max(union, 1))
+
+    # Initialise min-dist of every candidate vs the fitness-selected seeds
+    min_dist = {}
+    for idx in remaining:
+        md = 1.0
+        for sel_idx in selected_indices:
+            d = _jaccard_dist(idx, sel_idx)
+            if d < md:
+                md = d
+                if md <= 0.0:
+                    break
+        min_dist[idx] = md
 
     for _ in range(min(n_diverse, len(remaining))):
         best_idx   = -1
         best_score = -1.0
 
         for idx in remaining:
-            tg = all_tg[idx]
-            min_dist = 1.0
-            for sel_idx in selected_set:
-                inter = len(tg & all_tg[sel_idx])
-                union = len(tg | all_tg[sel_idx])
-                dist  = 1.0 - (inter / max(union, 1))
-                if dist < min_dist:
-                    min_dist = dist
-                    if min_dist <= 0.0:
-                        break
             # Blend diversity with fitness rank so we don't pick total garbage
             rank_frac = 1.0 - idx / len(deduped)
-            score     = min_dist * (0.3 + 0.7 * rank_frac)
+            score     = min_dist[idx] * (0.3 + 0.7 * rank_frac)
             if score > best_score:
                 best_score = score
                 best_idx   = idx
 
         if best_idx >= 0:
-            selected_indices.append(best_idx)
-            selected_set.add(best_idx)
             remaining.discard(best_idx)
+            selected_indices.append(best_idx)
+            # Update candidates' min-dist against ONLY the new selection
+            for idx in remaining:
+                if min_dist[idx] > 0.0:
+                    d = _jaccard_dist(idx, best_idx)
+                    if d < min_dist[idx]:
+                        min_dist[idx] = d
 
     result = [copy.deepcopy(deduped[i][0]) for i in selected_indices]
     logger.info("Extracted %d elite programs (%d fitness + %d diversity | pool=%d, unique=%d).",
