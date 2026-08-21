@@ -3,7 +3,7 @@
 # =============================================================================
 
 # ── DATA ──────────────────────────────────────────────────────────────────
-DATAPATH = "data/NIFTY MID SELECT_15minute.csv"
+DATAPATH = "trade_discovery/project_core/data/NIFTY MID SELECT_60minute.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
 ORACLE_MAX_HOLD = 26
