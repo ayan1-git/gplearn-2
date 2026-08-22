@@ -76,6 +76,15 @@ SPREAD_FLOOR  = float(_cfg("FITNESS_SPREAD_FLOOR", 0.08))
 SPREAD_WEIGHT = float(_cfg("FITNESS_SPREAD_WEIGHT", 5.0))
 ANTI_CONVERGENCE_FRACTION = float(_cfg("GEL_ANTI_CONVERGENCE_FRACTION", 0.10))
 MAX_PROGRAM_LENGTH = int(_cfg("MAX_PROGRAM_LENGTH", 40))
+# Anti-collapse floors: the GEL structural guard rejects formulas with <3
+# features ("too shallow"), so the FITNESS must enforce the same floor —
+# otherwise trivial 1–2-feature formulas dominate train fitness + parsimony,
+# tournament selection homogenises the population onto them within ~5 gens,
+# and whole generations get wasted on guard rejections (observed empirically).
+GP_MIN_NODES   = int(_cfg("GP_MIN_NODES", 8))
+GP_MIN_FEATURES = int(_cfg("GP_MIN_FEATURES", 3))
+GP_SHALLOW_PENALTY_PER_FEATURE = float(_cfg("GP_SHALLOW_PENALTY_PER_FEATURE", 0.15))
+GP_SHALLOW_PENALTY_PER_NODE    = float(_cfg("GP_SHALLOW_PENALTY_PER_NODE", 0.02))
 N_JOBS_DEFAULT     = int(_cfg("GP_N_JOBS", 1))
 ELITE_FRACTION     = float(_cfg("GP_ELITE_FRACTION", 0.05))   # μ+λ elitism share
 POINT_NODE_PROB    = float(_cfg("GP_POINT_NODE_PROB", 0.15))  # per-node point-mut prob
@@ -386,10 +395,31 @@ def directional_score(y, y_pred, pearson_w, direction_w):
 _REJECT_SCORE = -9999.0
 
 
+def _features_used(individual) -> set:
+    """Distinct named feature terminals in the tree (constants excluded)."""
+    feats = set()
+    for node in individual:
+        if isinstance(node, gp.Primitive):
+            continue
+        v = getattr(node, "value", None)
+        if isinstance(v, str):
+            feats.add(v)
+    return feats
+
+
+def _shallow_penalty(individual, n_features_used: int) -> float:
+    """Penalty pushing programs above the minimum complexity floors so that
+    selection pressure aligns with main_pipeline's structural guard."""
+    node_deficit = max(0, GP_MIN_NODES - len(individual))
+    feat_deficit = max(0, GP_MIN_FEATURES - n_features_used)
+    return (GP_SHALLOW_PENALTY_PER_NODE * node_deficit +
+            GP_SHALLOW_PENALTY_PER_FEATURE * feat_deficit)
+
+
 def evaluate_individual(individual, X, y, parsimony, feat_index, context,
                         pearson_w, direction_w):
-    """Raw directional fitness minus parsimony×length (mirrors how gplearn
-    folded parsimony into fitness_ before storing it)."""
+    """Raw directional fitness minus parsimony×length and the shallow-formula
+    penalty (mirrors how gplearn folded parsimony into fitness_)."""
     try:
         y_pred = execute_tree(individual, X, feat_index, context)
         if not np.all(np.isfinite(y_pred)):
@@ -397,6 +427,7 @@ def evaluate_individual(individual, X, y, parsimony, feat_index, context,
         raw = directional_score(y, y_pred, pearson_w, direction_w)
     except Exception:
         return (_REJECT_SCORE,)
+    raw -= _shallow_penalty(individual, len(_features_used(individual)))
     individual.raw_score = raw
     return (raw - parsimony * len(individual),)
 
@@ -915,6 +946,14 @@ def train_gp_model(X_train, y_train, seed_programs=None, fold: int = 0,
         _evaluate(population, parsimony)
 
         gen_best = max(population, key=lambda i: i.fitness.values[0])
+        # Track the best BLOAT-ELIGIBLE program: if the global best exceeds
+        # MAX_PROGRAM_LENGTH, fall back to the best program under the cap
+        # instead of discarding the entire evolution (legacy behaviour).
+        eligible = [i for i in population if len(i) <= MAX_PROGRAM_LENGTH]
+        if eligible:
+            gen_best = max(eligible, key=lambda i: i.fitness.values[0])
+        else:
+            gen_best = max(population, key=lambda i: i.fitness.values[0])
         gen_best_key = gen_best.fitness.values[0]
         if gen_best_key > best_overall_key:
             best_overall_key = gen_best_key

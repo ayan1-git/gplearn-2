@@ -54,6 +54,16 @@ GP_N_JOBS          = 1
 GP_ELITE_FRACTION  = 0.05   # μ+λ elitism share carried unchanged each generation
 GP_POINT_NODE_PROB = 0.15   # per-node flip probability for point mutation
 
+# ── ANTI-COLLAPSE FLOORS ──────────────────────────────────────────────────
+# The structural guard rejects formulas with <3 features ("too shallow"),
+# so the GP fitness penalises sub-floor programs directly — otherwise trivial
+# 1–2-feature formulas win train fitness, the population collapses onto them,
+# and whole generations get rejected by the guard.
+GP_MIN_NODES                   = 8      # minimum tree node count (fitness floor)
+GP_MIN_FEATURES                = 3      # minimum distinct features (matches guard)
+GP_SHALLOW_PENALTY_PER_FEATURE = 0.15   # raw-score penalty per missing feature
+GP_SHALLOW_PENALTY_PER_NODE    = 0.02   # raw-score penalty per missing node
+
 GEL_HOLDOUT_FRACTION   = 0.20
 GEL_GENERATIONS        = 50
 GEL_SEEDS_PER_GEN      = 200

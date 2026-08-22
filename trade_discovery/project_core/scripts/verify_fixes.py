@@ -186,6 +186,9 @@ def test_config():
     for k in ("OOS_MAX_DRAWDOWN_HIGH_SHARPE", "HIGH_SHARPE_THRESHOLD"):
         assert hasattr(cfg, k), f"missing {k}"
     assert hasattr(cfg, "GP_N_JOBS"), "missing GP_N_JOBS (DEAP parallelism)"
+    for k in ("GP_MIN_NODES", "GP_MIN_FEATURES",
+              "GP_SHALLOW_PENALTY_PER_FEATURE", "GP_SHALLOW_PENALTY_PER_NODE"):
+        assert hasattr(cfg, k), f"missing anti-collapse key {k}"
     for k in ("SEED_SOFT_THRESHOLD_SHARPE", "SEED_DECAY_FRACTION",
               "ROTATION_FEATURE", "GP_RESTARTS", "IMBALANCE_LAMBDA",
               "ACTIVITY_FLOOR", "ACTIVITY_LAMBDA", "MIN_LONG", "MIN_SHORT"):
@@ -243,6 +246,14 @@ def test_deap_smoke():
         res = ge.train_gp_model(X, y, fold=7)
         assert res is not None, "smoke run returned None (bloat guard?)"
         assert res.best_length > 0
+
+        # Anti-collapse floor: the best program must clear the shallow-formula
+        # penalty regime (≥ GP_MIN_FEATURES features, ≥ GP_MIN_NODES nodes).
+        assert res.best_length >= ge.GP_MIN_NODES, \
+            f"best program too short ({res.best_length} < {ge.GP_MIN_NODES})"
+        used_feats = ge._features_used(res.best_program)
+        assert len(used_feats) >= ge.GP_MIN_FEATURES, \
+            f"best program too shallow: {len(used_feats)} features"
 
         formula = res.best_formula
         if res.best_length > 1:

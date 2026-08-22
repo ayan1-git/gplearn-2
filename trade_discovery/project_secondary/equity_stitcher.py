@@ -34,8 +34,9 @@ def stitch_equity_curves(
     records = []
     nav     = 1.0
 
-    for w in sorted(winning_formulas, key=lambda x: x['fold']):
-        fold      = w['fold']
+    for w in sorted(winning_formulas,
+                    key=lambda x: x.get('fold', x.get('gen', 0))):
+        fold      = w.get('fold', w.get('gen', 0))
         fold_ret  = w['return_pct'] / 100.0      # fractional return for this OOS window
         nav_end   = nav * (1 + fold_ret)
 
