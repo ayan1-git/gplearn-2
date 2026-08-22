@@ -1,9 +1,9 @@
-# Pinned exact versions (FIX #13): the pipeline depends on gplearn internals
-# (_programs layout, warm-start phase re-entry, the feature-prior source patch
-# in src/gplearn_prior_patch.py), so floating versions risk silent breakage.
+# Pinned exact versions (FIX #13): the pipeline depends on engine internals
+# (DEAP primitive-set/tree layout, operator semantics, the native feature
+# prior in src/gp_engine.py), so floating versions risk silent breakage.
 numpy==2.4.4
 pandas==2.3.3
-gplearn==0.4.3
+deap==1.4.4
 vectorbt==1.0.0
 scikit-learn==1.8.0
 numba==0.65.0

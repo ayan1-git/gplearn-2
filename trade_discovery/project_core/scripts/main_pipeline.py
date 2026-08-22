@@ -87,6 +87,10 @@ SIG_REPEAT_RESET      = getattr(cfg, 'GEL_SIG_REPEAT_RESET',     3)
 # Phase-2 anti-convergence: inject fresh random programs into seed pool
 ANTI_CONVERGENCE_FRACTION = getattr(cfg, 'GEL_ANTI_CONVERGENCE_FRACTION', 0.10)
 
+# DEAP engine fitness parallelism (>1 = joblib across programs; workers
+# receive the fold matrix, so mind memory)
+GP_N_JOBS = int(getattr(cfg, 'GP_N_JOBS', 1))
+
 # ── IMPORTS ──────────────────────────────────────────────────────────────────
 from src.feature_engineering import (calculate_features,
                                       PASSTHROUGH_FEATURES,
@@ -603,6 +607,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 feature_proba = feat_proba,
                 regime        = train_regime,
                 df_raw_train  = df_raw.loc[X_train_s.index],
+                n_jobs        = GP_N_JOBS,
             )
         except Exception as exc:
             logger.error("[Gen %d] GP training crashed: %s", gen, exc, exc_info=True)
@@ -617,8 +622,8 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
             logger.warning("[Gen %d] GP returned None (internal bloat guard). Skipping generation.", gen)
             continue
 
-        formula_str  = str(gp._program)
-        program_len  = len(gp._program.program) if hasattr(gp._program, 'program') else 0
+        formula_str  = gp.best_formula
+        program_len  = gp.best_length
         formula_hash = hash_formula(formula_str)
 
         # ── Structural guards ─────────────────────────────────────────────────
@@ -791,7 +796,7 @@ def gel_loop(df_raw: pd.DataFrame, df_features: pd.DataFrame, y_targets: pd.Seri
                 'win_rate': win_rate, 'profit_factor': profit_fac, 'n_trades': n_trades,
                 'buy_threshold': buy_thresh, 'sell_threshold': sell_thresh,
                 'coverage_pct': coverage,
-                'program': copy.deepcopy(gp._program),   # P1: retain for OOS-seeded evolution
+                'program': copy.deepcopy(gp.best_program),  # P1: retain for OOS-seeded evolution
             })
             gen_meta_rows[-1]['winner'] = True
 

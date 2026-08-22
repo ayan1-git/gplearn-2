@@ -45,6 +45,15 @@ GP_POINT_MUTATION  = 0.1
 GP_MAX_SAMPLES     = 0.9   # P2: more data per program → less bagging overfit
 GP_FEATURE_PRIOR_ALPHA = 5.0   # Dirichlet smoothing strength
 
+# ── DEAP ENGINE ───────────────────────────────────────────────────────────
+# GP_N_JOBS > 1 evaluates fitness across the population with joblib.
+# Serial (1) is default: each program eval is one vectorized numpy pass over
+# the bagged fold matrix; parallel workers receive that matrix per batch,
+# so only raise this if wall-clock profiling justifies the memory cost.
+GP_N_JOBS          = 1
+GP_ELITE_FRACTION  = 0.05   # μ+λ elitism share carried unchanged each generation
+GP_POINT_NODE_PROB = 0.15   # per-node flip probability for point mutation
+
 GEL_HOLDOUT_FRACTION   = 0.20
 GEL_GENERATIONS        = 50
 GEL_SEEDS_PER_GEN      = 200
