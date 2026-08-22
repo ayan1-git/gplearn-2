@@ -7,8 +7,8 @@
 DATAPATH = "data/NIFTY 50_30minute.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
-ORACLE_MAX_HOLD = 39
-TP_ATR_MULT     = 7.5
+ORACLE_MAX_HOLD = 91
+TP_ATR_MULT     = 3.5
 SL_ATR_MULT     = 2
 ATR_PERIOD      = 14
 DROP_NEUTRAL    = True    # If True, rows with target=0 are removed from training
