@@ -7,10 +7,10 @@
 DATAPATH = "data/NIFTY 50_30minute.csv"
 
 # ── TRIPLE BARRIER METHOD ─────────────────────────────────────────────────
-ORACLE_MAX_HOLD = 26
-TP_ATR_MULT     = 2.4
-SL_ATR_MULT     = 1.9
-ATR_PERIOD      = 20
+ORACLE_MAX_HOLD = 39
+TP_ATR_MULT     = 7.5
+SL_ATR_MULT     = 2
+ATR_PERIOD      = 14
 DROP_NEUTRAL    = True    # If True, rows with target=0 are removed from training
 DROP_WHIPSAW    = True    # If True, rows with target=-99 (Both-SL) are removed
 # FIX #8: exclude BOTH_TP rows (both TP barriers hit within one bar). These
